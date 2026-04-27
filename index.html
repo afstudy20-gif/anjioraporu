@@ -46,28 +46,60 @@
         .diffuse { padding: 3px 8px; border-radius: 10px; border: 2px solid white; box-shadow: 0 0 0 1px var(--s); }
         .free-text { position: absolute; color: #b91c1c; font-weight: 700; cursor: move; white-space: nowrap; }
         #doctor-box { position: absolute; bottom: 8%; right: 10%; width: 180px; font-weight: 600; cursor: move; }
+        select.field { -webkit-appearance: none; -moz-appearance: none; appearance: none; background: transparent; border: none; padding: 0; cursor: pointer; color: inherit; font-family: inherit; font-size: inherit; }
+        select.field:focus { outline: none; background: #eff6ff; }
 
         #floating-editor, #context-menu {
             display: none; position: fixed; background: white; padding: 10px; border-radius: 8px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.15); border: 1px solid #e2e8f0; z-index: 2000;
         }
-        #upload-area {
-            width: 500px; height: 300px; border: 2px dashed #cbd5e1; border-radius: 20px;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            background: white; color: #64748b; cursor: pointer; margin: auto;
+        #welcome-screen {
+            display: flex; gap: 20px; max-width: 800px; margin: 10vh auto; width: 100%;
         }
+        .welcome-card {
+            flex: 1; padding: 40px; border: 2px dashed #cbd5e1; border-radius: 20px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: white; color: #64748b; cursor: pointer; text-align: center;
+            transition: all 0.2s;
+        }
+        .welcome-card:hover { border-color: var(--p); color: var(--p); background: #f8fafc; box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
+        .welcome-card .icon { font-size: 48px; margin-bottom: 20px; }
+        
+        .checkbox {
+            position: absolute; width: 14px; height: 14px; border: 1px solid #64748b;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+            background: white; font-size: 10px; font-weight: bold; transition: 0.2s;
+        }
+        .checkbox:hover { border-color: var(--p); }
+        .checkbox.checked { background: #fee2e2; border-color: var(--s); }
+        .checkbox.checked::after { content: 'X'; color: var(--s); }
+
         @media print {
-            body { padding: 0; } #toolbar, #floating-editor, #context-menu, #upload-area { display: none !important; }
+            body { padding: 0; } #toolbar, #floating-editor, #context-menu, #welcome-screen { display: none !important; }
             #report-container { display: block !important; box-shadow: none; }
             .field { background: transparent !important; }
+            .checkbox { border: 1px solid #ccc; }
         }
     </style>
 </head>
 <body>
 
-    <div id="upload-area" onclick="document.getElementById('file-input').click()">
-        <h2>Rapor Resmini Yükle</h2>
-        <input type="file" id="file-input" style="display: none" accept="image/*">
+    <div id="welcome-screen">
+        <div class="welcome-card" onclick="document.getElementById('file-input').click()">
+            <div class="icon">📁</div>
+            <h2>Resim Yükle</h2>
+            <p style="margin-top: 10px;">Kendi rapor formunuzu yükleyin</p>
+            <input type="file" id="file-input" style="display: none" accept="image/*">
+        </div>
+        <div class="welcome-card" onclick="loadKoruTemplate()">
+            <div class="icon">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C13.2381 3 14.4093 3.25056 15.4719 3.70275C13.1118 4.77452 11.4545 7.14324 11.4545 9.89744C11.4545 13.5714 14.4286 16.5455 18.1026 16.5455C18.8924 16.5455 19.6456 16.4079 20.3421 16.1557C19.1415 19.0142 16.3023 21 13 21" fill="#e11d48"/>
+                </svg>
+            </div>
+            <h2>Koru Kavaklıdere</h2>
+            <p style="margin-top: 10px;">Varsayılan anjiyo rapor şablonu</p>
+        </div>
     </div>
 
     <div id="toolbar" style="display: none">
@@ -87,6 +119,12 @@
             <label style="color: #e11d48;">Tam Rapor Şablonları</label>
             <div id="list-full_report" class="list-container"></div>
             <div class="add-group"><input type="text" id="in-full_report" placeholder="Şablon adı..."><button onclick="saveFull()" class="btn-red">💾</button></div>
+        </div>
+
+        <div class="tool-group" style="background: #f0fdf4; padding: 10px; border-radius: 8px;">
+            <label style="color: #16a34a;">Form Yerleşimleri (Layout)</label>
+            <div id="list-layout" class="list-container"></div>
+            <div class="add-group"><input type="text" id="in-layout" placeholder="Yerleşim adı..."><button onclick="saveL()" style="border-color:#16a34a; color:#16a34a;">📐</button></div>
         </div>
 
         <div class="tool-group">
@@ -119,8 +157,51 @@
         <img id="form-image">
         <svg id="svg-layer"></svg>
         <div id="annotation-layer">
-            <div contenteditable="true" id="f-name" class="field draggable grey" style="top: 9.3%; left: 16%; width: 28%;"></div>
-            <div contenteditable="true" id="f-date" class="field draggable" style="top: 9.3%; left: 51.5%; width: 20%;"></div>
+            <!-- Row 1 -->
+            <div contenteditable="true" id="f-name" class="field draggable" style="top: 7.8%; left: 23%; width: 23%;"></div>
+            <div contenteditable="true" id="f-date" class="field draggable" style="top: 7.8%; left: 58.5%; width: 15%;"></div>
+            <div contenteditable="true" id="f-dosya-no" class="field draggable" style="top: 7.8%; left: 81%; width: 12%;"></div>
+            
+            <!-- Row 2 -->
+            <div contenteditable="true" id="f-yas-cin" class="field draggable" style="top: 10.2%; left: 23%; width: 23%;"></div>
+            <div contenteditable="true" id="f-islem-no" class="field draggable" style="top: 10.2%; left: 58.5%; width: 15%;"></div>
+            <div contenteditable="true" id="f-kod1" class="field draggable" style="top: 10.2%; left: 81%; width: 12%;"></div>
+
+            <!-- Row 3 -->
+            <div contenteditable="true" id="f-boy-kilo" class="field draggable" style="top: 12.6%; left: 23%; width: 23%;"></div>
+            <div contenteditable="true" id="f-tel" class="field draggable" style="top: 12.6%; left: 58.5%; width: 15%;"></div>
+            <div contenteditable="true" id="f-kod2" class="field draggable" style="top: 12.6%; left: 81%; width: 12%;"></div>
+
+            <!-- Row 4 -->
+            <div contenteditable="true" id="f-tc" class="field draggable" style="top: 15.0%; left: 23%; width: 23%;"></div>
+            <!-- Radial Checkboxes -->
+            <div id="f-rad-sag" class="checkbox draggable" style="top: 14.6%; left: 66.5%;" onclick="this.classList.toggle('checked')"></div>
+            <div id="f-rad-sol" class="checkbox draggable" style="top: 14.6%; left: 72.8%;" onclick="this.classList.toggle('checked')"></div>
+            <div contenteditable="true" id="f-kod3" class="field draggable" style="top: 15.0%; left: 81%; width: 12%;"></div>
+
+            <!-- Row 5 -->
+            <div contenteditable="true" id="f-kat-sol" class="field draggable" style="top: 17.4%; left: 19%; width: 8%;"></div>
+            <div contenteditable="true" id="f-kat-sag" class="field draggable" style="top: 17.4%; left: 53.5%; width: 8%;"></div>
+            <!-- Femoral Checkboxes -->
+            <div id="f-fem-sag" class="checkbox draggable" style="top: 17.0%; left: 66.5%;" onclick="this.classList.toggle('checked')"></div>
+            <div id="f-fem-sol" class="checkbox draggable" style="top: 17.0%; left: 72.8%;" onclick="this.classList.toggle('checked')"></div>
+            <div contenteditable="true" id="f-kod4" class="field draggable" style="top: 17.4%; left: 81%; width: 12%;"></div>
+
+            <!-- Row 6 -->
+            <div contenteditable="true" id="f-vent" class="field draggable" style="top: 19.8%; left: 23%; width: 23%;"></div>
+            <select id="f-dr" class="field draggable" style="top: 19.8%; left: 58.5%; width: 35%;"></select>
+
+            <!-- EF & Risk Factors -->
+            <div contenteditable="true" id="f-ef" class="field draggable" style="top: 33.8%; left: 53%; width: 10%; font-weight: bold; font-size: 14px;"></div>
+            
+            <div contenteditable="true" id="f-risk-ht" class="field draggable" style="top: 39.5%; left: 93%; width: 5%;"></div>
+            <div contenteditable="true" id="f-risk-dm" class="field draggable" style="top: 41.9%; left: 93%; width: 5%;"></div>
+            <div contenteditable="true" id="f-risk-sig" class="field draggable" style="top: 44.3%; left: 93%; width: 5%;"></div>
+            <div contenteditable="true" id="f-risk-hpl" class="field draggable" style="top: 46.7%; left: 93%; width: 5%;"></div>
+            <div contenteditable="true" id="f-risk-aile" class="field draggable" style="top: 49.1%; left: 93%; width: 5%;"></div>
+
+            <!-- Bottom Fields -->
+            <div contenteditable="true" id="f-dominant" class="field draggable" style="top: 84.8%; left: 18%; width: 20%;"></div>
             <div contenteditable="true" id="f-tani" class="field draggable" style="top: 86.6%; left: 14%; width: 80%;"></div>
             <div contenteditable="true" id="f-konsey" class="field draggable" style="top: 90.4%; left: 14%; width: 80%;"></div>
             <div id="doctor-box"></div>
@@ -147,15 +228,30 @@
         let mode = 'select', lineStart = null, eT = null, rT = null, uS = [], rS = [], selD = new Set();
         const svg = document.getElementById('svg-layer'), ann = document.getElementById('annotation-layer'), ed = document.getElementById('floating-editor'), ctx = document.getElementById('context-menu');
 
-        window.onload = () => { document.getElementById('f-date').innerText = new Date().toLocaleDateString('tr-TR'); ['tani','konsey','doktor','full_report'].forEach(rTani); };
+        window.onload = () => { document.getElementById('f-date').innerText = new Date().toLocaleDateString('tr-TR'); ['tani','konsey','doktor','full_report','layout'].forEach(rTani); };
         
         document.getElementById('file-input').onchange = (e) => {
             const f=e.target.files[0]; if(!f) return;
             const r = new FileReader(); r.onload = (v) => {
                 document.getElementById('form-image').src = v.target.result;
-                document.getElementById('upload-area').style.display='none'; document.getElementById('report-container').style.display='block'; document.getElementById('toolbar').style.display='flex';
+                document.getElementById('welcome-screen').style.display='none'; document.getElementById('report-container').style.display='block'; document.getElementById('toolbar').style.display='flex';
                 rec();
             }; r.readAsDataURL(f);
+        };
+
+        const loadKoruTemplate = () => {
+            const img = document.getElementById('form-image');
+            img.onload = () => {
+                document.getElementById('welcome-screen').style.display='none'; 
+                document.getElementById('report-container').style.display='block'; 
+                document.getElementById('toolbar').style.display='flex';
+                rec();
+            };
+            img.onerror = () => {
+                alert("Lütfen gönderdiğiniz Koru Kavaklıdere şablon resmini 'koru_sablon.png' veya 'koru_sablon.jpg' olarak kaydedip proje klasörüne ekleyin.");
+            };
+            // Add cache-buster to force reload if the file was replaced
+            img.src = 'koru_sablon.png?v=' + Date.now();
         };
 
         const setMode = (m) => { mode = m; document.querySelectorAll('.tool-group button').forEach(b=>b.classList.remove('active')); if(document.getElementById('mode-'+m)) document.getElementById('mode-'+m).classList.add('active'); lineStart = null; document.querySelectorAll('.stenosis-point.pending').forEach(p=>p.remove()); };
@@ -191,18 +287,82 @@
         const saveT = (t,l) => { localStorage.setItem('anj_'+t, JSON.stringify(l)); rTani(t); };
         const addT = (t) => { const i=document.getElementById('in-'+t), v=i.value.trim(); if(!v) return; const l=getT(t); l.push(v); saveT(t,l); i.value=''; };
         const esc = (s) => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-        const rTani = (t) => { const c=document.getElementById('list-'+t); if(!c) return; c.innerHTML=getT(t).map((item,i)=>{ const label=(t==='full_report'?(item&&item.name)||'Şablon':item); return `<div class="list-item" onclick="useT('${t}',${i},this)"><span>${esc(label)}</span><span onclick="delT('${t}',${i},event)" style="color:red">✕</span></div>`; }).join(''); };
+        const rTani = (t) => { 
+            const c=document.getElementById('list-'+t); if(!c) return; 
+            const list = getT(t);
+            c.innerHTML=list.map((item,i)=>{ const label=(t==='full_report'?(item&&item.name)||'Şablon':item); return `<div class="list-item" onclick="useT('${t}',${i},this)"><span>${esc(label)}</span><span onclick="delT('${t}',${i},event)" style="color:red">✕</span></div>`; }).join(''); 
+            if (t === 'doktor') {
+                const drSel = document.getElementById('f-dr');
+                if (drSel) {
+                    const currentVal = drSel.value;
+                    drSel.innerHTML = '<option value="">Doktor Seçiniz...</option>' + list.map(d => `<option value="${esc(d)}">${esc(d)}</option>`).join('');
+                    drSel.value = currentVal;
+                }
+            }
+        };
         const delT = (t,i,e) => { e.stopPropagation(); const l=getT(t); l.splice(i,1); saveT(t,l); };
-        const useT = (t,i,el) => { const list=getT(t), item=list[i]; if(item===undefined) return; if(t==='tani') document.getElementById('f-tani').innerText=item; else if(t==='konsey') document.getElementById('f-konsey').innerText=item; else if(t==='doktor'){ if(selD.has(item)){ selD.delete(item); el.style.background='#f8fafc'; } else { selD.add(item); el.style.background='#eff6ff'; } document.getElementById('doctor-box').innerHTML=Array.from(selD).map(d=>`<div>Dr. ${d}</div>`).join(''); } else if(t==='full_report') loadF(item.state); rec(); };
+        const useT = (t,i,el) => { const list=getT(t), item=list[i]; if(item===undefined) return; if(t==='tani') document.getElementById('f-tani').innerText=item; else if(t==='konsey') document.getElementById('f-konsey').innerText=item; else if(t==='doktor'){ if(selD.has(item)){ selD.delete(item); el.style.background='#f8fafc'; } else { selD.add(item); el.style.background='#eff6ff'; } document.getElementById('doctor-box').innerHTML=Array.from(selD).map(d=>`<div>Dr. ${d}</div>`).join(''); } else if(t==='full_report') loadF(item.state); else if(t==='layout') loadL(item.state); rec(); };
 
-        const cap = () => ({ tani:document.getElementById('f-tani').innerText, konsey:document.getElementById('f-konsey').innerText, name:document.getElementById('f-name').innerText, date:document.getElementById('f-date').innerText, markers:Array.from(document.querySelectorAll('.stenosis-label')).map(l=>({x:l.style.left,y:l.style.top,v:l.innerText,vs:l.dataset.vessel,df:l.classList.contains('diffuse'),ln:document.getElementById(l.dataset.lineId)?{x1:document.getElementById(l.dataset.lineId).getAttribute('x1'),y1:document.getElementById(l.dataset.lineId).getAttribute('y1')}:null})), txts:Array.from(document.querySelectorAll('.free-text')).map(t=>({x:t.style.left,y:t.style.top,v:t.innerText})) });
+        const capL = () => {
+            const data = {};
+            document.querySelectorAll('[id^="f-"]').forEach(el => {
+                data[el.id.replace('f-', '')] = { x: el.style.left, y: el.style.top };
+            });
+            return data;
+        };
+        const saveL = () => { const n=document.getElementById('in-layout').value; if(!n) return; const l=getT('layout'); l.push({name:n, state:capL()}); saveT('layout',l); };
+        const loadL = (s) => {
+            if(!s) return;
+            Object.keys(s).forEach(key => {
+                const el = document.getElementById('f-' + key);
+                if (el && s[key]) {
+                    if (s[key].x) el.style.left = s[key].x;
+                    if (s[key].y) el.style.top = s[key].y;
+                }
+            });
+        };
+
+        const cap = () => {
+            const data = { fields: {}, markers: [], txts: [] };
+            document.querySelectorAll('[id^="f-"]').forEach(el => {
+                data.fields[el.id.replace('f-', '')] = {
+                    v: el.tagName === 'SELECT' ? el.value : el.innerText,
+                    x: el.style.left,
+                    y: el.style.top,
+                    c: el.classList.contains('checked') // Save checkbox state
+                };
+            });
+            data.markers = Array.from(document.querySelectorAll('.stenosis-label')).map(l=>({x:l.style.left,y:l.style.top,v:l.innerText,vs:l.dataset.vessel,df:l.classList.contains('diffuse'),ln:document.getElementById(l.dataset.lineId)?{x1:document.getElementById(l.dataset.lineId).getAttribute('x1'),y1:document.getElementById(l.dataset.lineId).getAttribute('y1')}:null}));
+            data.txts = Array.from(document.querySelectorAll('.free-text')).map(t=>({x:t.style.left,y:t.style.top,v:t.innerText})) ;
+            return data;
+        };
         const saveFull = () => { const n=document.getElementById('in-full_report').value; if(!n) return; const l=getT('full_report'); l.push({name:n, state:cap()}); saveT('full_report',l); };
-        const loadF = (s) => { if(!s) return; document.getElementById('f-tani').innerText=s.tani||''; document.getElementById('f-konsey').innerText=s.konsey||''; document.querySelectorAll('.stenosis-label,.stenosis-point,.free-text').forEach(e=>e.remove()); svg.innerHTML=''; (s.markers||[]).forEach(m=>{ const l = m.ln ? crSL({x:parseFloat(m.ln.x1),y:parseFloat(m.ln.y1)},{x:parseFloat(m.x),y:parseFloat(m.y)},m.v.replace('%','')) : crS(parseFloat(m.x),parseFloat(m.y),m.v.replace('%','')); if(l){ l.dataset.vessel=m.vs||''; if(m.df) l.classList.add('diffuse'); } }); (s.txts||[]).forEach(t=>{ const tx=crT(parseFloat(t.x),parseFloat(t.y)); tx.innerText=t.v; }); };
+        const loadF = (s) => { 
+            if(!s) return; 
+            if (s.fields) {
+                Object.keys(s.fields).forEach(key => {
+                    const el = document.getElementById('f-' + key);
+                    if (el) {
+                        if (el.tagName === 'SELECT') el.value = s.fields[key].v || '';
+                        else el.innerText = s.fields[key].v || '';
+                        if (s.fields[key].x) el.style.left = s.fields[key].x;
+                        if (s.fields[key].y) el.style.top = s.fields[key].y;
+                        if (s.fields[key].c) el.classList.add('checked'); else el.classList.remove('checked');
+                    }
+                });
+            } else {
+                // Backward compatibility for old saves
+                document.querySelectorAll('[id^="f-"]').forEach(el => {
+                    const key = el.id.replace('f-', '');
+                    if (s[key] !== undefined) el.innerText = s[key];
+                });
+            }
+            document.querySelectorAll('.stenosis-label,.stenosis-point,.free-text').forEach(e=>e.remove()); svg.innerHTML=''; (s.markers||[]).forEach(m=>{ const l = m.ln ? crSL({x:parseFloat(m.ln.x1),y:parseFloat(m.ln.y1)},{x:parseFloat(m.x),y:parseFloat(m.y)},m.v.replace('%','')) : crS(parseFloat(m.x),parseFloat(m.y),m.v.replace('%','')); if(l){ l.dataset.vessel=m.vs||''; if(m.df) l.classList.add('diffuse'); } }); (s.txts||[]).forEach(t=>{ const tx=crT(parseFloat(t.x),parseFloat(t.y)); tx.innerText=t.v; }); };
 
         const rec = () => { const s=JSON.stringify(cap()); if(uS.length && uS[uS.length-1]===s) return; uS.push(s); rS=[]; };
         const undo = () => { if(uS.length<2) return; rS.push(uS.pop()); apply(uS[uS.length-1]); };
         const redo = () => { if(!rS.length) return; const s=rS.pop(); uS.push(s); apply(s); };
-        const apply = (s) => { const d=JSON.parse(s); document.getElementById('f-name').innerText=d.name||''; document.getElementById('f-date').innerText=d.date||''; loadF(d); };
+        const apply = (s) => { const d=JSON.parse(s); loadF(d); };
 
         const doPrint = () => { const n=document.getElementById('f-name').innerText||'Hasta', d=document.getElementById('f-date').innerText, oT=document.title; document.title=n+'.'+d; window.print(); setTimeout(()=>document.title=oT,1000); };
         const expJSON = () => { const b=new Blob([JSON.stringify({t:getT('tani'),k:getT('konsey'),d:getT('doktor'),f:getT('full_report')})],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='yedek.json'; a.click(); };
