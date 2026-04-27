@@ -1,0 +1,7 @@
+.git
+.env
+server.log
+server.pid
+Dockerfile.final
+node_modules
+.DS_Store

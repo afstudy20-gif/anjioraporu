@@ -1,12 +1,10 @@
 {
-  "name": "coolify-app",
+  "name": "anjioraporu",
   "version": "1.0.0",
-  "description": "A simple Node.js app for Coolify",
-  "main": "index.js",
+  "description": "Static angiography report editor deployed with Coolify",
+  "private": true,
   "scripts": {
-    "start": "node index.js"
-  },
-  "engines": {
-    "node": ">=18"
+    "start": "python3 -m http.server 3000",
+    "check": "test -f index.html && test -f koru_sablon.png"
   }
 }

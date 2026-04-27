@@ -1,18 +1,7 @@
-# Minimal Dockerfile for the Angular/Node application
-FROM node:18-alpine
+FROM nginx:1.27-alpine
 
-# Set working directory
-WORKDIR /app
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY index.html /usr/share/nginx/html/index.html
+COPY koru_sablon.png /usr/share/nginx/html/koru_sablon.png
 
-# Copy only the necessary files
-COPY package*.json ./
-COPY . .
-
-# Install production dependencies (if any)
-RUN npm install --production
-
-# Expose the port the app runs on
-EXPOSE 3000
-
-# Start the application
-CMD ["node", "index.js"]
+EXPOSE 80
