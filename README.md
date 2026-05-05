@@ -11,4 +11,4 @@ Use the repository Dockerfile in Coolify.
 - Exposed port: `80`
 - No Node.js server process is required.
 
-The container serves `index.html` and `koru_sablon.png` with nginx.
+The container serves `index.html` and PNG report assets with nginx.

@@ -5,6 +5,6 @@
   "private": true,
   "scripts": {
     "start": "python3 -m http.server 3000",
-    "check": "test -f index.html && test -f koru_sablon.png"
+    "check": "test -f index.html && test -f koru_sablon.png && test -f koru_sablon_map.png && test -f pkg_sablon.png && test -f stent.png && test -f lima.png && test -f safen.png && test -f damarduvari.png"
   }
 }

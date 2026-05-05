@@ -29,14 +29,30 @@
         .add-group { display: flex; gap: 3px; }
         .add-group input { flex: 1; padding: 4px; font-size: 11px; border: 1px solid #e2e8f0; border-radius: 4px; }
         
-        #report-container { position: relative; background: white; box-shadow: 0 10px 40px rgba(0,0,0,0.1); display: none; }
-        #form-image { width: 210mm; display: block; }
-        #annotation-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
-        #svg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        #report-wrapper {
+            flex: 1;
+            height: calc(100vh - 40px);
+            overflow: auto;
+            background: #cbd5e1;
+            display: none;
+            border-radius: 16px;
+            padding: 40px;
+        }
+        #report-container { 
+            position: relative; 
+            background: white; 
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1); 
+            transform-origin: top left;
+            transition: transform 0.1s ease-out;
+            display: inline-block; /* Lock to image size */
+        }
+        #form-image { width: 210mm; display: block; position: relative; z-index: 1; }
+        #annotation-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; z-index: 10; pointer-events: auto; }
+        #svg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
         
         .stenosis-point { position: absolute; width: 6px; height: 6px; background: var(--s); border-radius: 50%; transform: translate(-50%, -50%); z-index: 50; pointer-events: none; }
-        .field { position: absolute; cursor: move; min-height: 18px; padding: 0 2px; }
-        .field:focus { outline: 1px solid var(--p); background: white !important; cursor: text; }
+        .field { position: absolute; cursor: move; min-height: 18px; padding: 0 2px; min-width: 40px; border-bottom: 1px solid transparent; z-index: 100; pointer-events: auto; color: #000; }
+        .field:focus { outline: none; border-bottom: 1px solid rgba(249,115,22,0.3); background: rgba(249,115,22,0.03); cursor: text; }
         .field.grey { background: rgba(0,0,0,0.03); }
         .stenosis-label {
             position: absolute; background: var(--s); color: white; padding: 1px 5px;
@@ -44,8 +60,8 @@
             cursor: move; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
         .diffuse { padding: 3px 8px; border-radius: 10px; border: 2px solid white; box-shadow: 0 0 0 1px var(--s); }
-        .free-text { position: absolute; color: #b91c1c; font-weight: 700; cursor: move; white-space: nowrap; }
-        #doctor-box { position: absolute; bottom: 8%; right: 10%; width: 180px; font-weight: 600; cursor: move; }
+        .free-text { position: absolute; color: #000; font-weight: 700; cursor: move; white-space: nowrap; min-width: 60px; min-height: 18px; background: rgba(255,255,255,0.8); border-radius: 4px; padding: 2px 4px; border: 1px dashed #cbd5e1; z-index: 110; pointer-events: auto; }
+        #doctor-box { position: absolute; bottom: 8%; right: 10%; width: 180px; font-weight: 600; cursor: move; z-index: 120; pointer-events: auto; }
         select.field { -webkit-appearance: none; -moz-appearance: none; appearance: none; background: transparent; border: none; padding: 0; cursor: pointer; color: inherit; font-family: inherit; font-size: inherit; }
         select.field:focus { outline: none; background: #eff6ff; }
 
@@ -73,12 +89,132 @@
         .checkbox:hover { border-color: var(--p); }
         .checkbox.checked { background: #fee2e2; border-color: var(--s); }
         .checkbox.checked::after { content: 'X'; color: var(--s); }
+        
+        .report-object {
+            position: absolute;
+            cursor: move;
+            z-index: 60;
+            transform-origin: top center;
+            display: none; /* Managed by JS */
+        }
+        .report-object-img {
+            width: 100%;
+            height: 100%;
+            mix-blend-mode: multiply;
+            pointer-events: none;
+            object-fit: fill;
+        }
+        .report-object-handle {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: white;
+            border: 2px solid var(--p);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            z-index: 70;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            display: block;
+        }
+        .report-object-handle.tip { background: var(--p); }
+        .report-object-handle.bend { background: #fff; border-color: #f59e0b; }
+        .report-object-handle.top-trans { background: #facc15; border-color: #ca8a04; border-radius: 3px; width: 14px; height: 14px; cursor: move; }
+        .report-object { outline: 1px dashed transparent; }
+        .report-object:hover { outline-color: var(--p); }
+        .report-object.selected { outline: 1px dashed var(--p); }
 
+        .smart-line-handle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: white;
+            border: 2px solid var(--p);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            z-index: 80;
+            display: none;
+        }
+        .smart-line-handle.cp {
+            background: #facc15;
+            border-radius: 2px;
+            transform: translate(-50%, -50%) rotate(45deg);
+        }
+        .smart-line-path {
+            fill: none;
+            stroke: black;
+            stroke-width: 3;
+            pointer-events: stroke;
+            cursor: pointer;
+        }
+        .smart-line-path:hover { stroke: var(--p); }
+
+        .stamp { position: absolute; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; cursor: move; white-space: nowrap; transform: translate(-50%, -50%); z-index: 90; pointer-events: auto; border: none; color: #000; }
+        .stamp.s-normal { background: #d1fae5; }
+        .stamp.s-slow   { background: #fef3c7; }
+        .stamp.s-ektazi { background: #ede9fe; }
+        .stamp.s-bridge { background: #dbeafe; }
+        .stamp.s-custom { background: #f1f5f9; }
+        .stamp-src.dragging { opacity: 0.4; }
+        #annotation-layer.drop-target { outline: 2px dashed var(--p); outline-offset: -2px; }
+
+        body.alt-drag .field, body.alt-drag .checkbox, body.alt-drag #doctor-box,
+        body.alt-drag .stenosis-label, body.alt-drag .free-text, body.alt-drag .stamp,
+        body.alt-drag .pci-report-area { cursor: move !important; }
+        body.alt-drag .field:focus { outline: 1px dashed var(--p); background: rgba(37,99,235,0.05) !important; cursor: move !important; }
+        body.alt-drag * { user-select: none !important; -webkit-user-select: none !important; }
+
+        .pci-report-area {
+            position: absolute;
+            top: 76%;
+            left: 8%;
+            width: 84%;
+            height: 21.5%;
+            font-size: 13px;
+            line-height: 1.5;
+            padding: 15px;
+            border: 1px dashed #cbd5e1;
+            overflow-y: auto;
+            text-align: left;
+            color: #000;
+            background: white;
+            z-index: 10;
+            display: none;
+        }
+        .pci-report-area:focus { border-color: var(--p); background: #f0f9ff; outline: none; }
+        
         @media print {
-            body { padding: 0; } #toolbar, #floating-editor, #context-menu, #welcome-screen { display: none !important; }
-            #report-container { display: block !important; box-shadow: none; }
-            .field { background: transparent !important; }
-            .checkbox { border: 1px solid #ccc; }
+            @page { size: A4; margin: 0; }
+            body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exact; }
+            body * { visibility: hidden; }
+            #report-wrapper { 
+                visibility: visible; 
+                position: absolute; 
+                left: 0; top: 0; 
+                width: 210mm; 
+                height: 297mm; 
+                margin: 0; padding: 0; 
+                display: block !important; 
+                background: white;
+                overflow: hidden;
+            }
+            #report-container { 
+                visibility: visible;
+                position: absolute;
+                left: 0; top: 0;
+                width: 100%; 
+                height: 100%;
+                box-shadow: none !important; 
+                transform: none !important; 
+                border: none !important;
+                display: block !important;
+            }
+            #report-container * { visibility: visible; }
+            #form-image { width: 100%; height: 100%; object-fit: contain; }
+            #toolbar, #floating-editor, #context-menu, .smart-line-handle, .report-object-handle, .btn-red, .add-group, #welcome-screen, .tool-sidebar, .list-container, label { display: none !important; }
+            .selected { outline: none !important; }
+            .field { border-bottom: none !important; }
         }
     </style>
 </head>
@@ -97,8 +233,20 @@
                     <path d="M12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C13.2381 3 14.4093 3.25056 15.4719 3.70275C13.1118 4.77452 11.4545 7.14324 11.4545 9.89744C11.4545 13.5714 14.4286 16.5455 18.1026 16.5455C18.8924 16.5455 19.6456 16.4079 20.3421 16.1557C19.1415 19.0142 16.3023 21 13 21" fill="#e11d48"/>
                 </svg>
             </div>
-            <h2>Koru Kavaklıdere</h2>
+            <h2>Koru Anjiyografi</h2>
             <p style="margin-top: 10px;">Varsayılan anjiyo rapor şablonu</p>
+        </div>
+        <div class="welcome-card" onclick="loadPkgTemplate()">
+            <div class="icon">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="4" y="4" width="16" height="16" rx="2" stroke="#e11d48" stroke-width="2" fill="none"/>
+                    <path d="M8 8H16" stroke="#e11d48" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M8 12H16" stroke="#e11d48" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M8 16H12" stroke="#e11d48" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </div>
+            <h2>Koru PKG Raporu</h2>
+            <p style="margin-top: 10px;">Perkütan Koroner Girişim Rapor Alanı</p>
         </div>
     </div>
 
@@ -110,8 +258,32 @@
                 <button id="mode-direct" onclick="setMode('direct')">📍 Nokta</button>
                 <button id="mode-line" onclick="setMode('line')">🔗 Çizgi</button>
                 <button id="mode-text" onclick="setMode('text')">✍️ Not</button>
+                <button id="mode-stent" onclick="setMode('stent')">🕸️ Stent</button>
+                <button id="mode-sline" onclick="setMode('sline')">➰ Akıllı Çizgi</button>
+                <button id="mode-fline" onclick="setMode('fline')">✏️ Serbest Çizgi</button>
+                <button id="mode-lima" onclick="setMode('lima')">🤱 LIMA</button>
+                <button id="mode-safen" onclick="setMode('safen')">🦵 Safen</button>
+                <button id="mode-damar" onclick="setMode('damar')">📏 Damar</button>
                 <button onclick="undo()">↩️ Geri</button>
                 <button onclick="redo()">↪️ İleri</button>
+            </div>
+            <label style="margin-top:10px;">Damgalar (sürükle bırak)</label>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px;">
+                <div class="stamp-src" draggable="true" data-label="Normal" data-cls="s-normal" style="background:#d1fae5;color:#065f46;border:1.5px solid #10b981;font-size:11px;font-weight:700;padding:6px;border-radius:6px;text-align:center;cursor:grab;user-select:none;">Normal</div>
+                <div class="stamp-src" draggable="true" data-label="Yavaş akım" data-cls="s-slow" style="background:#fef3c7;color:#92400e;border:1.5px solid #f59e0b;font-size:11px;font-weight:700;padding:6px;border-radius:6px;text-align:center;cursor:grab;user-select:none;">Yavaş akım</div>
+                <div class="stamp-src" draggable="true" data-label="Ektazi" data-cls="s-ektazi" style="background:#ede9fe;color:#5b21b6;border:1.5px solid #8b5cf6;font-size:11px;font-weight:700;padding:6px;border-radius:6px;text-align:center;cursor:grab;user-select:none;">Ektazi</div>
+                <div class="stamp-src" draggable="true" data-label="Müsküler bridge" data-cls="s-bridge" style="background:#dbeafe;color:#1e40af;border:1.5px solid #3b82f6;font-size:11px;font-weight:700;padding:6px;border-radius:6px;text-align:center;cursor:grab;user-select:none;">Müsküler bridge</div>
+            </div>
+            <div class="add-group" style="margin-top:4px;"><input type="text" id="in-stamp" placeholder="Özel damga..."><button onclick="addCustomStampSource()">+</button></div>
+            <div id="custom-stamp-list" style="display:grid; grid-template-columns:1fr 1fr; gap:4px; margin-top:4px;"></div>
+        </div>
+
+        <div class="tool-group">
+            <label>Görünüm & Zoom</label>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px;">
+                <button onclick="zoom(0.1)" title="Zoom In">🔍+</button>
+                <button onclick="zoom(-0.1)" title="Zoom Out">🔍-</button>
+                <button onclick="resetZoom()" title="Reset">🔄</button>
             </div>
         </div>
 
@@ -153,43 +325,44 @@
         <button onclick="doPrint()" style="background: var(--p); color: white; padding: 12px; margin-top: 5px;">PDF Kaydet</button>
     </div>
 
-    <div id="report-container">
-        <img id="form-image">
-        <svg id="svg-layer"></svg>
-        <div id="annotation-layer">
-            <!-- Row 1 -->
-            <div contenteditable="true" id="f-name" class="field draggable" style="top: 7.8%; left: 23%; width: 23%;"></div>
-            <div contenteditable="true" id="f-date" class="field draggable" style="top: 7.8%; left: 58.5%; width: 15%;"></div>
-            <div contenteditable="true" id="f-dosya-no" class="field draggable" style="top: 7.8%; left: 81%; width: 12%;"></div>
-            
+    <div id="report-wrapper">
+        <div id="report-container">
+            <img id="form-image">
+            <svg id="svg-layer"></svg>
+            <div id="annotation-layer">
+                <!-- Row 1 -->
+                <div contenteditable="true" id="f-name" class="field draggable" style="top: 8.7%; left: 24%; width: 22%;"></div>
+                <div contenteditable="true" id="f-date" class="field draggable" style="top: 8.7%; left: 58%; width: 22%;"></div>
+                <div contenteditable="true" id="f-dosya-no" class="field draggable" style="top: 8.7%; left: 83%; width: 11%;"></div>
+
             <!-- Row 2 -->
-            <div contenteditable="true" id="f-yas-cin" class="field draggable" style="top: 10.2%; left: 23%; width: 23%;"></div>
-            <div contenteditable="true" id="f-islem-no" class="field draggable" style="top: 10.2%; left: 58.5%; width: 15%;"></div>
-            <div contenteditable="true" id="f-kod1" class="field draggable" style="top: 10.2%; left: 81%; width: 12%;"></div>
+            <div contenteditable="true" id="f-yas-cin" class="field draggable" style="top: 10.5%; left: 24%; width: 22%;"></div>
+            <div contenteditable="true" id="f-islem-no" class="field draggable" style="top: 10.5%; left: 58%; width: 22%;"></div>
+            <div contenteditable="true" id="f-kod1" class="field draggable" style="top: 10.5%; left: 83%; width: 11%;"></div>
 
             <!-- Row 3 -->
-            <div contenteditable="true" id="f-boy-kilo" class="field draggable" style="top: 12.6%; left: 23%; width: 23%;"></div>
-            <div contenteditable="true" id="f-tel" class="field draggable" style="top: 12.6%; left: 58.5%; width: 15%;"></div>
-            <div contenteditable="true" id="f-kod2" class="field draggable" style="top: 12.6%; left: 81%; width: 12%;"></div>
+            <div contenteditable="true" id="f-boy-kilo" class="field draggable" style="top: 12.3%; left: 24%; width: 22%;"></div>
+            <div contenteditable="true" id="f-tel" class="field draggable" style="top: 12.3%; left: 58%; width: 22%;"></div>
+            <div contenteditable="true" id="f-kod2" class="field draggable" style="top: 12.3%; left: 83%; width: 11%;"></div>
 
             <!-- Row 4 -->
-            <div contenteditable="true" id="f-tc" class="field draggable" style="top: 15.0%; left: 23%; width: 23%;"></div>
+            <div contenteditable="true" id="f-tc" class="field draggable" style="top: 14.0%; left: 24%; width: 22%;"></div>
             <!-- Radial Checkboxes -->
-            <div id="f-rad-sag" class="checkbox draggable" style="top: 14.6%; left: 66.5%;" onclick="this.classList.toggle('checked')"></div>
-            <div id="f-rad-sol" class="checkbox draggable" style="top: 14.6%; left: 72.8%;" onclick="this.classList.toggle('checked')"></div>
-            <div contenteditable="true" id="f-kod3" class="field draggable" style="top: 15.0%; left: 81%; width: 12%;"></div>
+            <div id="f-rad-sag" class="checkbox draggable" style="top: 14.4%; left: 66%;"></div>
+            <div id="f-rad-sol" class="checkbox draggable" style="top: 14.4%; left: 73%;"></div>
+            <div contenteditable="true" id="f-kod3" class="field draggable" style="top: 14.0%; left: 83%; width: 11%;"></div>
 
             <!-- Row 5 -->
-            <div contenteditable="true" id="f-kat-sol" class="field draggable" style="top: 17.4%; left: 19%; width: 8%;"></div>
-            <div contenteditable="true" id="f-kat-sag" class="field draggable" style="top: 17.4%; left: 53.5%; width: 8%;"></div>
+            <div contenteditable="true" id="f-kat-sol" class="field draggable" style="top: 15.7%; left: 24%; width: 14%;"></div>
+            <div contenteditable="true" id="f-kat-sag" class="field draggable" style="top: 15.7%; left: 40%; width: 8%;"></div>
             <!-- Femoral Checkboxes -->
-            <div id="f-fem-sag" class="checkbox draggable" style="top: 17.0%; left: 66.5%;" onclick="this.classList.toggle('checked')"></div>
-            <div id="f-fem-sol" class="checkbox draggable" style="top: 17.0%; left: 72.8%;" onclick="this.classList.toggle('checked')"></div>
-            <div contenteditable="true" id="f-kod4" class="field draggable" style="top: 17.4%; left: 81%; width: 12%;"></div>
+            <div id="f-fem-sag" class="checkbox draggable" style="top: 16.2%; left: 66%;"></div>
+            <div id="f-fem-sol" class="checkbox draggable" style="top: 16.2%; left: 73%;"></div>
+            <div contenteditable="true" id="f-kod4" class="field draggable" style="top: 15.7%; left: 83%; width: 11%;"></div>
 
             <!-- Row 6 -->
-            <div contenteditable="true" id="f-vent" class="field draggable" style="top: 19.8%; left: 23%; width: 23%;"></div>
-            <select id="f-dr" class="field draggable" style="top: 19.8%; left: 58.5%; width: 35%;"></select>
+            <div contenteditable="true" id="f-vent" class="field draggable" style="top: 17.5%; left: 24%; width: 22%;"></div>
+            <select id="f-dr" class="field draggable" style="top: 17.5%; left: 58%; width: 22%;"></select>
 
             <!-- EF & Risk Factors -->
             <div contenteditable="true" id="f-ef" class="field draggable" style="top: 33.8%; left: 53%; width: 10%; font-weight: bold; font-size: 14px;"></div>
@@ -200,13 +373,20 @@
             <div contenteditable="true" id="f-risk-hpl" class="field draggable" style="top: 46.7%; left: 93%; width: 5%;"></div>
             <div contenteditable="true" id="f-risk-aile" class="field draggable" style="top: 49.1%; left: 93%; width: 5%;"></div>
 
+            <!-- Auto vessel diagnosis (LMCA/LAD/CX/RCA summary) -->
+            <div contenteditable="true" id="f-auto-tani" class="field draggable" style="top: 30%; left: 4%; width: 22%; min-height: 70px; font-size: 11px; line-height: 1.4; white-space: pre-wrap; background: rgba(255,255,255,0.7); padding: 4px 6px; border-radius: 4px; border: 1px dashed #cbd5e1;"></div>
+
             <!-- Bottom Fields -->
             <div contenteditable="true" id="f-dominant" class="field draggable" style="top: 84.8%; left: 18%; width: 20%;"></div>
-            <div contenteditable="true" id="f-tani" class="field draggable" style="top: 86.6%; left: 14%; width: 80%;"></div>
-            <div contenteditable="true" id="f-konsey" class="field draggable" style="top: 90.4%; left: 14%; width: 80%;"></div>
+            <div contenteditable="true" id="f-tani" class="field draggable" style="top: 87.0%; left: 12%; width: 82%;"></div>
+            <div contenteditable="true" id="f-konsey" class="field draggable" style="top: 90.6%; left: 21%; width: 73%;"></div>
             <div id="doctor-box"></div>
+            
+            <!-- PCI Report Text Area -->
+            <div contenteditable="true" id="f-pci-text" class="pci-report-area"></div>
         </div>
     </div>
+</div>
 
     <div id="floating-editor">
         <select id="e-vessel" style="width:100%; margin-bottom:5px; font-size:11px;">
@@ -218,76 +398,706 @@
     </div>
 
     <div id="context-menu">
-        <button onclick="chV()" style="width:100%; margin-bottom:2px">✏️ Düzenle</button>
-        <button onclick="tgS('focal')" style="width:100%; margin-bottom:2px">○ Odak</button>
-        <button onclick="tgS('diffuse')" style="width:100%; margin-bottom:2px">▢ Diffüz</button>
-        <button onclick="delC()" style="color:red; width:100%">🗑️ Sil</button>
+        <button id="ctx-edit" onclick="chV()" style="width:100%; margin-bottom:2px">✏️ Düzenle</button>
+        <button id="ctx-focal" onclick="tgS('focal')" style="width:100%; margin-bottom:2px">○ Odak</button>
+        <button id="ctx-diffuse" onclick="tgS('diffuse')" style="width:100%; margin-bottom:2px">▢ Diffüz</button>
+        <button id="ctx-dup" onclick="dup()" style="width:100%; margin-bottom:2px">📋 Çoğalt</button>
+        <button id="ctx-del" onclick="delC()" style="color:red; width:100%">🗑️ Sil</button>
     </div>
 
     <script>
-        let mode = 'select', lineStart = null, eT = null, rT = null, uS = [], rS = [], selD = new Set();
-        const svg = document.getElementById('svg-layer'), ann = document.getElementById('annotation-layer'), ed = document.getElementById('floating-editor'), ctx = document.getElementById('context-menu');
+        let mode = 'select', lineStart = null, eT = null, rT = null, uS = [], rS = [], selD = new Set(), currentZoom = 1, curStamp = null;
+        const ann = document.getElementById('annotation-layer'), svg = document.getElementById('svg-layer'), cont = document.getElementById('report-container');
+        const img = document.getElementById('form-image'), ed = document.getElementById('floating-editor'), ctx = document.getElementById('context-menu'), wrapper = document.getElementById('report-wrapper');
+        const mapCanvas = document.createElement('canvas'), mapCtx = mapCanvas.getContext('2d');
 
-        window.onload = () => { document.getElementById('f-date').innerText = new Date().toLocaleDateString('tr-TR'); ['tani','konsey','doktor','full_report','layout'].forEach(rTani); };
+        const vColors = {
+            'LMCA': [55, 65, 81], // Koyu Gri
+            'LAD': [59, 130, 246], // Mavi
+            'CX': [239, 68, 68], // Kırmızı
+            'RCA': [34, 197, 94] // Yeşil
+        };
+
+        const detectVessel = (x, y) => {
+            if (!mapCanvas.width) return '';
+            try {
+                const px = mapCtx.getImageData(x * mapCanvas.width / 100, y * mapCanvas.height / 100, 1, 1).data;
+                for (const [name, col] of Object.entries(vColors)) {
+                    if (Math.abs(px[0]-col[0]) < 40 && Math.abs(px[1]-col[1]) < 40 && Math.abs(px[2]-col[2]) < 40) return name;
+                }
+            } catch(e) {}
+            return '';
+        };
+
+        const updateDiagnosis = () => {
+            const groups = { 'LMCA':[], 'LAD':[], 'CX':[], 'RCA':[] };
+            document.querySelectorAll('.stenosis-label').forEach(l => {
+                const v = l.dataset.vessel;
+                if (groups[v]) groups[v].push(l.innerText.replace('%',''));
+            });
+            let res = [];
+            for (const name of ['LMCA','LAD','CX','RCA']) {
+                const vals = groups[name];
+                if (vals.length) {
+                    const max = Math.max(...vals.map(Number));
+                    res.push(`${name}: %${max} darlık`);
+                } else {
+                    res.push(`${name}: Normal`);
+                }
+            }
+            const target = document.getElementById('f-auto-tani');
+            if (target) target.innerText = res.join('\n');
+        };
+
+        img.onload = () => {
+            // Must show wrapper first to get valid offsetWidth/Height
+            wrapper.style.display = 'block';
+            cont.style.width = img.offsetWidth + 'px';
+            cont.style.height = img.offsetHeight + 'px';
+            
+            // Load map
+            const mapImg = new Image();
+            mapImg.crossOrigin = "Anonymous";
+            mapImg.onload = () => {
+                mapCanvas.width = mapImg.width; mapCanvas.height = mapImg.height;
+                mapCtx.drawImage(mapImg, 0, 0);
+            };
+            mapImg.src = 'koru_sablon_map.png';
+
+            // Show toolbar
+            if (img.src.includes('sablon')) {
+                document.getElementById('welcome-screen').style.display='none'; 
+                document.getElementById('toolbar').style.display='flex';
+                rec();
+            }
+        };
+
+        window.onload = () => { 
+            const dField = document.getElementById('f-date');
+            if(dField) dField.innerText = new Date().toLocaleDateString('tr-TR'); 
+            ['tani','konsey','doktor','full_report','layout'].forEach(t => {
+                if (typeof rTani === 'function') rTani(t);
+            }); 
+        };
         
         document.getElementById('file-input').onchange = (e) => {
             const f=e.target.files[0]; if(!f) return;
             const r = new FileReader(); r.onload = (v) => {
                 document.getElementById('form-image').src = v.target.result;
-                document.getElementById('welcome-screen').style.display='none'; document.getElementById('report-container').style.display='block'; document.getElementById('toolbar').style.display='flex';
+                document.getElementById('welcome-screen').style.display='none'; 
+                if(wrapper) wrapper.style.display='block'; 
+                const tb = document.getElementById('toolbar');
+                if(tb) tb.style.display='flex';
                 rec();
             }; r.readAsDataURL(f);
         };
 
         const loadKoruTemplate = () => {
-            const img = document.getElementById('form-image');
-            img.onload = () => {
-                document.getElementById('welcome-screen').style.display='none'; 
-                document.getElementById('report-container').style.display='block'; 
-                document.getElementById('toolbar').style.display='flex';
-                rec();
-            };
-            img.onerror = () => {
-                alert("Lütfen gönderdiğiniz Koru Kavaklıdere şablon resmini 'koru_sablon.png' veya 'koru_sablon.jpg' olarak kaydedip proje klasörüne ekleyin.");
-            };
-            // Add cache-buster to force reload if the file was replaced
+            document.getElementById('f-pci-text').style.display = 'none';
+            document.getElementById('f-dominant').style.display = 'block';
+            document.getElementById('f-tani').style.display = 'block';
+            document.getElementById('f-konsey').style.display = 'block';
             img.src = 'koru_sablon.png?v=' + Date.now();
         };
 
-        const setMode = (m) => { mode = m; document.querySelectorAll('.tool-group button').forEach(b=>b.classList.remove('active')); if(document.getElementById('mode-'+m)) document.getElementById('mode-'+m).classList.add('active'); lineStart = null; document.querySelectorAll('.stenosis-point.pending').forEach(p=>p.remove()); };
-        
-        ann.onclick = (e) => {
-            if(e.target !== ann || mode === 'select') return;
-            const rc = ann.getBoundingClientRect(), x = (e.clientX-rc.left)/rc.width*100, y = (e.clientY-rc.top)/rc.height*100;
-            if(mode==='direct') crS(x,y,'70');
-            else if(mode==='line') { if(!lineStart) { lineStart={x,y}; const p=document.createElement('div'); p.className='stenosis-point pending'; p.style.left=x+'%'; p.style.top=y+'%'; ann.appendChild(p); } else { document.querySelectorAll('.stenosis-point.pending').forEach(p=>p.remove()); crSL(lineStart,{x,y},'70'); lineStart=null; } }
-            else if(mode==='text') crT(x,y);
+        const loadPkgTemplate = () => {
+            const pciArea = document.getElementById('f-pci-text');
+            pciArea.style.display = 'block';
+            document.getElementById('f-dominant').style.display = 'none';
+            document.getElementById('f-tani').style.display = 'none';
+            document.getElementById('f-konsey').style.display = 'none';
+            if (!pciArea.innerText.trim()) pciArea.innerText = 'Perkütan Koroner Girişim Raporu:\n\n';
+            img.src = 'pkg_sablon.png?v=' + Date.now();
         };
 
-        const crS = (x,y,v) => { const l=document.createElement('div'); l.className='stenosis-label'; l.style.left=x+'%'; l.style.top=y+'%'; l.innerHTML='%'+v; l.onclick=(e)=>{e.stopPropagation(); opE(l,e.clientX,e.clientY);}; l.oncontextmenu=(e)=>opM(e,l); mkD(l); ann.appendChild(l); rec(); return l; };
+        const zoom = (delta) => {
+            currentZoom += delta;
+            currentZoom = Math.max(0.4, Math.min(3, currentZoom));
+            cont.style.transform = `scale(${currentZoom})`;
+        };
+        const resetZoom = () => {
+            currentZoom = 1;
+            cont.style.transform = `scale(1)`;
+        };
+
+        const setMode = (m) => { mode = m; document.querySelectorAll('.tool-group button').forEach(b=>b.classList.remove('active')); if(document.getElementById('mode-'+m)) document.getElementById('mode-'+m).classList.add('active'); lineStart = null; document.querySelectorAll('.stenosis-point.pending').forEach(p=>p.remove()); if (m !== 'stamp') curStamp = null; };
+        const STAMP_KEY = 'anj_stamp_custom';
+        const getCustomStamps = () => { try { return JSON.parse(localStorage.getItem(STAMP_KEY) || '[]'); } catch { return []; } };
+        const saveCustomStamps = (l) => { localStorage.setItem(STAMP_KEY, JSON.stringify(l)); renderCustomStamps(); };
+        const renderCustomStamps = () => {
+            const c = document.getElementById('custom-stamp-list'); if (!c) return;
+            const list = getCustomStamps();
+            c.innerHTML = list.map((label, i) =>
+                `<div class="stamp-src" draggable="true" data-label="${esc(label)}" data-cls="s-custom" data-idx="${i}" style="background:#f1f5f9;color:#334155;border:1.5px solid #64748b;font-size:11px;font-weight:700;padding:6px;border-radius:6px;text-align:center;cursor:grab;user-select:none;position:relative;">${esc(label)}<span data-del="${i}" style="position:absolute;top:1px;right:4px;color:#ef4444;font-weight:700;cursor:pointer;font-size:12px;">×</span></div>`
+            ).join('');
+            wireStampSources();
+        };
+        const addCustomStampSource = () => {
+            const v = document.getElementById('in-stamp').value.trim(); if (!v) return;
+            const list = getCustomStamps(); list.push(v); saveCustomStamps(list);
+            document.getElementById('in-stamp').value = '';
+        };
+        const wireStampSources = () => {
+            document.querySelectorAll('.stamp-src').forEach(src => {
+                if (src.dataset.wired) return;
+                src.dataset.wired = '1';
+                src.addEventListener('dragstart', (e) => {
+                    e.dataTransfer.setData('text/x-stamp', JSON.stringify({ label: src.dataset.label, cls: src.dataset.cls }));
+                    e.dataTransfer.effectAllowed = 'copy';
+                    src.classList.add('dragging');
+                });
+                src.addEventListener('dragend', () => src.classList.remove('dragging'));
+                const del = src.querySelector('[data-del]');
+                if (del) del.addEventListener('click', (ev) => {
+                    ev.stopPropagation();
+                    const list = getCustomStamps(); list.splice(parseInt(del.dataset.del), 1); saveCustomStamps(list);
+                });
+            });
+        };
+        const setStamp = (label, cls) => { /* legacy click-to-place fallback */ curStamp = { label, cls }; mode = 'stamp'; };
+        const crStamp = (x, y, label, cls) => {
+            const s = document.createElement('div');
+            s.className = 'stamp ' + (cls || 's-custom');
+            s.dataset.cls = cls || 's-custom';
+            s.style.left = x + '%'; s.style.top = y + '%';
+            s.innerText = label;
+            s.oncontextmenu = (e) => opM(e, s);
+            mkD(s);
+            ann.appendChild(s);
+            rec();
+            return s;
+        };
+        
+        ann.onclick = (e) => {
+            if(e.target !== ann) return;
+            document.querySelectorAll('.selected').forEach(el=>el.classList.remove('selected'));
+            document.querySelectorAll('.smart-line-handle').forEach(h=>h.style.display='none');
+            
+            if(mode === 'select') return;
+            const rc = ann.getBoundingClientRect(), x = (e.clientX-rc.left)/rc.width*100, y = (e.clientY-rc.top)/rc.height*100;
+            if(mode==='direct') { const v=prompt("Darlık Oranı %:", "70"); if(v) { const l=crS(x,y,v); l.dataset.vessel = detectVessel(x,y); updateDiagnosis(); } setMode('select'); }
+            else if(mode==='line') { if(!lineStart) { lineStart={x,y}; const p=document.createElement('div'); p.className='stenosis-point pending'; p.style.left=x+'%'; p.style.top=y+'%'; ann.appendChild(p); } else { const v=prompt("Darlık Oranı %:", "70"); if(v) { document.querySelectorAll('.stenosis-point.pending').forEach(p=>p.remove()); const l=crSL(lineStart,{x,y},v); l.dataset.vessel = detectVessel(x,y); updateDiagnosis(); } lineStart=null; setMode('select'); } }
+            else if(mode==='sline') { if(!lineStart) { lineStart={x,y}; const p=document.createElement('div'); p.className='stenosis-point pending'; p.style.left=x+'%'; p.style.top=y+'%'; ann.appendChild(p); } else { document.querySelectorAll('.stenosis-point.pending').forEach(p=>p.remove()); crSmartLine(lineStart.x, lineStart.y, x, y); lineStart=null; } }
+            else if(mode==='text') crT(x,y);
+            else if(mode==='stamp' && curStamp) { crStamp(x, y, curStamp.label, curStamp.cls); setMode('select'); }
+            else if(['stent','lima','safen','damar'].includes(mode)) crObj(mode,x,y);
+        };
+
+        const crObj = (type, x, y, x2, y2, midX, midY) => {
+            const baseW = type === 'stent' ? 15 : 75;
+            const p1 = { x, y };
+            const p2 = { x: x2 ?? x, y: y2 ?? y + 15 };
+            const mid = { x: midX ?? (p1.x + p2.x) / 2, y: midY ?? (p1.y + p2.y) / 2 };
+
+            const c = document.createElement('div');
+            c.className = 'report-object';
+            c.dataset.type = type;
+            c.dataset.w = String(baseW);
+            c.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:60;display:block;outline:none;';
+            c.p1 = p1; c.p2 = p2; c.mid = mid;
+
+            const imgSrc = ({ stent: 'stent.png', lima: 'lima.png', safen: 'safen.png', damar: 'damarduvari.png' })[type];
+            const mkSeg = () => {
+                const seg = document.createElement('div');
+                seg.style.cssText = `position:absolute;width:${baseW}px;margin-left:-${baseW/2}px;transform-origin:top center;cursor:move;pointer-events:auto;z-index:60;`;
+                const img = document.createElement('img');
+                img.src = imgSrc;
+                img.style.cssText = 'width:100%;height:100%;mix-blend-mode:multiply;pointer-events:none;object-fit:fill;display:block;';
+                seg.appendChild(img);
+                return seg;
+            };
+            const seg1 = mkSeg(), seg2 = mkSeg();
+
+            const segAngle = (a, b) => -Math.atan2(b.x - a.x, b.y - a.y) * 180 / Math.PI;
+            const renderSeg = (seg, a, b, distPx, extraTopPx, extraBottomPx) => {
+                const angle = segAngle(a, b);
+                seg.style.left = a.x + '%';
+                seg.style.top = a.y + '%';
+                seg.style.height = (distPx + extraTopPx + extraBottomPx) + 'px';
+                seg.style.marginTop = (-extraTopPx) + 'px';
+                seg.style.transform = `rotate(${angle}deg)`;
+            };
+            const up = () => {
+                const r = ann.getBoundingClientRect();
+                const w = parseFloat(c.dataset.w) || baseW;
+                const halfW = w / 2;
+                const d1 = Math.hypot(mid.x - p1.x, mid.y - p1.y) * r.height / 100;
+                const d2 = Math.hypot(p2.x - mid.x, p2.y - mid.y) * r.height / 100;
+                const a1 = segAngle(p1, mid), a2 = segAngle(mid, p2);
+                let bend = a2 - a1;
+                while (bend > 180) bend -= 360;
+                while (bend < -180) bend += 360;
+                const halfBend = bend / 2;
+                const tiltRad = halfBend * Math.PI / 180;
+                const tan = Math.tan(tiltRad);
+                const offset = tan * halfW;
+                const absOff = Math.abs(offset);
+                renderSeg(seg1, p1, mid, d1, 0, absOff);
+                renderSeg(seg2, mid, p2, d2, absOff, 0);
+                const h1Total = d1 + absOff;
+                const h2Total = d2 + absOff;
+                if (offset >= 0) {
+                    seg1.style.clipPath = `polygon(0 0, ${w}px 0, ${w}px ${h1Total - offset*2}px, 0 ${h1Total}px)`;
+                    seg2.style.clipPath = `polygon(0 ${absOff*2}px, ${w}px 0, ${w}px ${h2Total}px, 0 ${h2Total}px)`;
+                } else {
+                    seg1.style.clipPath = `polygon(0 0, ${w}px 0, ${w}px ${h1Total}px, 0 ${h1Total - absOff*2}px)`;
+                    seg2.style.clipPath = `polygon(0 0, ${w}px ${absOff*2}px, ${w}px ${h2Total}px, 0 ${h2Total}px)`;
+                }
+                hTop.style.left = p1.x + '%'; hTop.style.top = p1.y + '%';
+                hMid.style.left = mid.x + '%'; hMid.style.top = mid.y + '%';
+                h2.style.left = p2.x + '%'; h2.style.top = p2.y + '%';
+            };
+
+            const drag = (target, onMove) => (e) => {
+                if (e.button !== 0) return;
+                e.stopPropagation(); e.preventDefault();
+                try { target.setPointerCapture(e.pointerId); } catch {}
+                const move = (ev) => onMove(ev);
+                const upH = (ev) => {
+                    target.removeEventListener('pointermove', move);
+                    target.removeEventListener('pointerup', upH);
+                    target.removeEventListener('pointercancel', upH);
+                    try { target.releasePointerCapture(ev.pointerId); } catch {}
+                    rec();
+                };
+                target.addEventListener('pointermove', move);
+                target.addEventListener('pointerup', upH);
+                target.addEventListener('pointercancel', upH);
+            };
+
+            // hTop (sarı kare) at p1: translates whole object
+            const hTop = document.createElement('div');
+            hTop.className = 'report-object-handle top-trans';
+            hTop.addEventListener('pointerdown', (e) => {
+                if (e.button !== 0) return;
+                e.stopPropagation(); e.preventDefault();
+                try { hTop.setPointerCapture(e.pointerId); } catch {}
+                const r = ann.getBoundingClientRect();
+                const sx = (e.clientX - r.left) / r.width * 100;
+                const sy = (e.clientY - r.top) / r.height * 100;
+                const sp1 = {...p1}, sp2 = {...p2}, smid = {...mid};
+                const move = (ev) => {
+                    const nx = (ev.clientX - r.left) / r.width * 100;
+                    const ny = (ev.clientY - r.top) / r.height * 100;
+                    const dx = nx - sx, dy = ny - sy;
+                    p1.x = sp1.x + dx; p1.y = sp1.y + dy;
+                    p2.x = sp2.x + dx; p2.y = sp2.y + dy;
+                    mid.x = smid.x + dx; mid.y = smid.y + dy;
+                    up();
+                };
+                const upH = (ev) => {
+                    hTop.removeEventListener('pointermove', move);
+                    hTop.removeEventListener('pointerup', upH);
+                    try { hTop.releasePointerCapture(ev.pointerId); } catch {}
+                    rec();
+                };
+                hTop.addEventListener('pointermove', move);
+                hTop.addEventListener('pointerup', upH);
+            });
+
+            // hMid (beyaz/turuncu daire) at midpoint: bends object (changes mid only)
+            const hMid = document.createElement('div');
+            hMid.className = 'report-object-handle bend';
+            hMid.addEventListener('pointerdown', drag(hMid, (ev) => {
+                const r = ann.getBoundingClientRect();
+                mid.x = (ev.clientX - r.left) / r.width * 100;
+                mid.y = (ev.clientY - r.top) / r.height * 100;
+                up();
+            }));
+
+            // h2 (mavi tip) at p2: end point
+            const h2 = document.createElement('div');
+            h2.className = 'report-object-handle tip';
+            h2.addEventListener('pointerdown', drag(h2, (ev) => {
+                const r = ann.getBoundingClientRect();
+                p2.x = (ev.clientX - r.left) / r.width * 100;
+                p2.y = (ev.clientY - r.top) / r.height * 100;
+                up();
+            }));
+
+            [hTop, hMid, h2].forEach(h => {
+                h.oncontextmenu = (e) => { e.preventDefault(); rT = c; opM(e, rT); };
+                ann.appendChild(h);
+            });
+
+            // Segments: click selects, contextmenu, shift+wheel = width
+            [seg1, seg2].forEach(seg => {
+                seg.oncontextmenu = (e) => opM(e, c);
+                seg.onclick = (e) => { e.stopPropagation(); document.querySelectorAll('.selected').forEach(el=>el.classList.remove('selected')); c.classList.add('selected'); };
+                seg.addEventListener('wheel', (e) => {
+                    if (!e.shiftKey) return;
+                    e.preventDefault();
+                    const cur = parseFloat(c.dataset.w) || baseW;
+                    const next = Math.max(4, Math.min(200, cur + (e.deltaY < 0 ? 2 : -2)));
+                    c.dataset.w = String(next);
+                    seg1.style.width = next + 'px'; seg1.style.marginLeft = `-${next/2}px`;
+                    seg2.style.width = next + 'px'; seg2.style.marginLeft = `-${next/2}px`;
+                    rec();
+                }, { passive: false });
+            });
+
+            c.appendChild(seg1); c.appendChild(seg2);
+            c.remove = ((old) => () => { old.call(c); hTop.remove(); hMid.remove(); h2.remove(); })(c.remove);
+            c.oncontextmenu = (e) => opM(e, c);
+
+            ann.appendChild(c);
+            up();
+            setMode('select');
+            rec();
+            return c;
+        };
+
+        const crSmartLine = (x1, y1, x2, y2) => {
+            const g = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            g.className.baseVal = 'smart-line-path';
+            const id = 'sl-' + Date.now();
+            g.id = id;
+            
+            const cp = { x: (x1 + x2) / 2, y: (y1 + y2) / 2 - 5 }; // Initial curvature
+            
+            const up = () => {
+                const r = ann.getBoundingClientRect();
+                const d = `M ${x1*r.width/100} ${y1*r.height/100} Q ${cp.x*r.width/100} ${cp.y*r.height/100} ${x2*r.width/100} ${y2*r.height/100}`;
+                g.setAttribute('d', d);
+                h1.style.left = x1 + '%'; h1.style.top = y1 + '%';
+                hc.style.left = cp.x + '%'; hc.style.top = cp.y + '%';
+                h2.style.left = x2 + '%'; h2.style.top = y2 + '%';
+            };
+
+            const mkH = (p, isCP) => {
+                const h = document.createElement('div');
+                h.className = 'smart-line-handle' + (isCP ? ' cp' : '');
+                h.onmousedown = (e) => {
+                    e.stopPropagation();
+                    document.onmousemove = (ev) => {
+                        const rc = ann.getBoundingClientRect();
+                        p.x = (ev.clientX - rc.left) / rc.width * 100;
+                        p.y = (ev.clientY - rc.top) / rc.height * 100;
+                        up();
+                    };
+                    document.onmouseup = () => { document.onmousemove = null; rec(); };
+                };
+                ann.appendChild(h);
+                return h;
+            };
+
+            const p1 = {x:x1, y:y1}, p2 = {x:x2, y:y2};
+            const h1 = mkH(p1), hc = mkH(cp, true), h2 = mkH(p2);
+            
+            g.p1 = p1; g.p2 = p2; g.cp = cp; // Store for persistence
+            g.setAttribute('stroke-width', '3');
+
+            const slT = { 
+                remove: () => { g.remove(); h1.remove(); hc.remove(); h2.remove(); }, 
+                dataset: {}, style: {}, isSLine: true, el: g, p1, p2, cp 
+            };
+            g.oncontextmenu = (e) => { e.preventDefault(); rT = slT; opM(e, rT); };
+            g.onclick = (e) => { e.stopPropagation(); document.querySelectorAll('.selected').forEach(el=>el.classList.remove('selected')); h1.style.display=hc.style.display=h2.style.display='block'; };
+            h1.oncontextmenu = (e) => { e.preventDefault(); rT = slT; opM(e, rT); };
+            hc.oncontextmenu = (e) => { e.preventDefault(); rT = slT; opM(e, rT); };
+            h2.oncontextmenu = (e) => { e.preventDefault(); rT = slT; opM(e, rT); };
+
+            svg.appendChild(g);
+            up();
+            setMode('select');
+            rec();
+            return { g, h1, hc, h2, p1, p2, cp };
+        };
+
+        // Ramer–Douglas–Peucker: drop points within `eps` of the line between kept neighbors.
+        const simplifyRDP = (pts, eps) => {
+            if (pts.length < 3) return pts.slice();
+            const sqDist = (a, b, c) => {
+                let x = a.x, y = a.y, dx = b.x - x, dy = b.y - y;
+                if (dx !== 0 || dy !== 0) {
+                    const t = ((c.x - x) * dx + (c.y - y) * dy) / (dx*dx + dy*dy);
+                    if (t > 1) { x = b.x; y = b.y; }
+                    else if (t > 0) { x += dx*t; y += dy*t; }
+                }
+                dx = c.x - x; dy = c.y - y;
+                return dx*dx + dy*dy;
+            };
+            const out = [pts[0]];
+            const recur = (s, e) => {
+                let maxD = 0, idx = -1;
+                for (let i = s + 1; i < e; i++) {
+                    const d = sqDist(pts[s], pts[e], pts[i]);
+                    if (d > maxD) { maxD = d; idx = i; }
+                }
+                if (maxD > eps*eps && idx >= 0) {
+                    recur(s, idx);
+                    out.push(pts[idx]);
+                    recur(idx, e);
+                }
+            };
+            recur(0, pts.length - 1);
+            out.push(pts[pts.length - 1]);
+            return out;
+        };
+
+        // Catmull–Rom → cubic Bézier path through anchor points (% coords).
+        const crFreeLine = (pts, sw) => {
+            sw = sw || '3';
+            const g = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            g.className.baseVal = 'smart-line-path';
+            g.id = 'fl-' + Date.now() + '-' + Math.random().toString(36).substr(2,4);
+            g.setAttribute('stroke-width', sw);
+            g.dataset.freehand = '1';
+
+            const handles = [];
+
+            const buildD = () => {
+                const r = ann.getBoundingClientRect();
+                const px = pts.map(p => ({x: p.x*r.width/100, y: p.y*r.height/100}));
+                if (px.length < 2) return '';
+                if (px.length === 2) return `M ${px[0].x} ${px[0].y} L ${px[1].x} ${px[1].y}`;
+                let d = `M ${px[0].x} ${px[0].y}`;
+                for (let i = 0; i < px.length - 1; i++) {
+                    const p0 = px[i-1] || px[i];
+                    const p1 = px[i];
+                    const p2 = px[i+1];
+                    const p3 = px[i+2] || px[i+1];
+                    const c1x = p1.x + (p2.x - p0.x)/6;
+                    const c1y = p1.y + (p2.y - p0.y)/6;
+                    const c2x = p2.x - (p3.x - p1.x)/6;
+                    const c2y = p2.y - (p3.y - p1.y)/6;
+                    d += ` C ${c1x} ${c1y} ${c2x} ${c2y} ${p2.x} ${p2.y}`;
+                }
+                return d;
+            };
+
+            const refresh = () => {
+                g.setAttribute('d', buildD());
+                handles.forEach((h, i) => { h.style.left = pts[i].x + '%'; h.style.top = pts[i].y + '%'; });
+            };
+
+            pts.forEach((p) => {
+                const h = document.createElement('div');
+                h.className = 'smart-line-handle';
+                h.style.display = 'none';
+                h.onmousedown = (ev) => {
+                    ev.stopPropagation();
+                    document.onmousemove = (mv) => {
+                        const rc = ann.getBoundingClientRect();
+                        p.x = (mv.clientX - rc.left) / rc.width * 100;
+                        p.y = (mv.clientY - rc.top) / rc.height * 100;
+                        refresh();
+                    };
+                    document.onmouseup = () => { document.onmousemove = null; document.onmouseup = null; rec(); };
+                };
+                ann.appendChild(h);
+                handles.push(h);
+            });
+
+            const slT = {
+                remove: () => { g.remove(); handles.forEach(h => h.remove()); },
+                dataset: {}, style: {}, isSLine: true, isFreehand: true, el: g, pts
+            };
+            g.oncontextmenu = (ev) => { ev.preventDefault(); rT = slT; opM(ev, rT); };
+            g.onclick = (ev) => {
+                ev.stopPropagation();
+                document.querySelectorAll('.selected').forEach(el=>el.classList.remove('selected'));
+                handles.forEach(h => h.style.display = 'block');
+            };
+            handles.forEach(h => {
+                h.oncontextmenu = (ev) => { ev.preventDefault(); rT = slT; opM(ev, rT); };
+            });
+
+            g.pts = pts;
+            svg.appendChild(g);
+            refresh();
+            return { g, handles, pts };
+        };
+
+        // Freehand capture (mode === 'fline'): drag → simplify → fit smooth curve.
+        let flineCapture = null;
+        ann.addEventListener('mousedown', (e) => {
+            if (mode !== 'fline' || e.target !== ann) return;
+            e.preventDefault();
+            const rc = ann.getBoundingClientRect();
+            flineCapture = {
+                rc,
+                pts: [{ x: (e.clientX-rc.left)/rc.width*100, y: (e.clientY-rc.top)/rc.height*100 }]
+            };
+        });
+        document.addEventListener('mousemove', (e) => {
+            if (!flineCapture) return;
+            const rc = flineCapture.rc;
+            const x = (e.clientX-rc.left)/rc.width*100, y = (e.clientY-rc.top)/rc.height*100;
+            const last = flineCapture.pts[flineCapture.pts.length-1];
+            if (Math.hypot(x-last.x, y-last.y) > 0.2) flineCapture.pts.push({x, y});
+        });
+        document.addEventListener('mouseup', () => {
+            if (!flineCapture) return;
+            const raw = flineCapture.pts;
+            flineCapture = null;
+            if (raw.length >= 2) {
+                crFreeLine(simplifyRDP(raw, 0.4));
+                rec();
+            }
+            setMode('select');
+        });
+
+        const upL = (l) => { const ln=document.getElementById(l.dataset.lineId); if(ln){ ln.setAttribute('x2',l.style.left); ln.setAttribute('y2',l.style.top); } updateDiagnosis(); rec(); };
+        const crS = (x,y,v) => { const l=document.createElement('div'); l.className='stenosis-label'; l.style.left=x+'%'; l.style.top=y+'%'; l.innerHTML='%'+v; l.onclick=(e)=>{e.stopPropagation(); opE(l,e.clientX,e.clientY);}; l.oncontextmenu=(e)=>opM(e,l); mkD(l, ()=>updateDiagnosis()); ann.appendChild(l); rec(); return l; };
         const crSL = (s,e,v) => {
             const lId='l-'+Math.random().toString(36).substr(2,5), p=document.createElement('div'); p.className='stenosis-point'; p.style.left=s.x+'%'; p.style.top=s.y+'%'; ann.appendChild(p);
             const l=document.createElement('div'); l.className='stenosis-label'; l.style.left=e.x+'%'; l.style.top=e.y+'%'; l.innerHTML='%'+v; l.dataset.lineId=lId; l.onclick=(ev)=>{ev.stopPropagation(); opE(l,ev.clientX,ev.clientY);}; l.oncontextmenu=(ev)=>opM(ev,l); mkD(l,()=>upL(l)); ann.appendChild(l);
             const ln=document.createElementNS('http://www.w3.org/2000/svg','line'); ln.id=lId; ln.setAttribute('x1',s.x+'%'); ln.setAttribute('y1',s.y+'%'); ln.setAttribute('x2',e.x+'%'); ln.setAttribute('y2',e.y+'%'); ln.setAttribute('stroke','#e11d48'); ln.setAttribute('stroke-width','1.5'); svg.appendChild(ln); rec(); return l;
         };
-        const crT = (x,y) => { const t=document.createElement('div'); t.className='free-text'; t.contentEditable=true; t.style.left=x+'%'; t.style.top=y+'%'; t.innerText='Not...'; t.oncontextmenu=(e)=>opM(e,t); mkD(t); ann.appendChild(t); rec(); return t; };
+        const crT = (x, y, val) => {
+            const v = (val !== undefined) ? val : prompt('Not metni:', '');
+            if (v === null || v === '') { setMode('select'); return null; }
+            const t = document.createElement('div');
+            t.className = 'free-text';
+            t.contentEditable = false;
+            t.style.left = x + '%'; t.style.top = y + '%';
+            t.innerText = v;
+            t.oncontextmenu = (e) => opM(e, t);
+            mkD(t); ann.appendChild(t);
+            setMode('select');
+            rec(); return t;
+        };
 
         const opE = (t,x,y) => { eT=t; ed.style.display='block'; ed.style.left=(x+10)+'px'; ed.style.top=(y+10)+'px'; document.getElementById('e-val').value=t.innerText.replace('%',''); document.getElementById('e-vessel').value=t.dataset.vessel||''; };
-        const apE = (s) => { if(!eT) return; eT.innerText='%'+document.getElementById('e-val').value; eT.dataset.vessel=document.getElementById('e-vessel').value; if(s==='diffuse') eT.classList.add('diffuse'); else eT.classList.remove('diffuse'); ed.style.display='none'; rec(); };
-        const delC = () => { const t=eT||rT; if(!t) return; if(t.dataset.lineId) document.getElementById(t.dataset.lineId)?.remove(); t.remove(); ed.style.display='none'; ctx.style.display='none'; rec(); };
-        const opM = (e,t) => { e.preventDefault(); e.stopPropagation(); rT=t; ctx.style.display='block'; ctx.style.left=e.clientX+'px'; ctx.style.top=e.clientY+'px'; };
+        const apE = (s) => { if(!eT) return; eT.innerText='%'+document.getElementById('e-val').value; eT.dataset.vessel=document.getElementById('e-vessel').value; if(s==='diffuse') eT.classList.add('diffuse'); else eT.classList.remove('diffuse'); ed.style.display='none'; updateDiagnosis(); rec(); };
+        const delC = () => { const t=eT||rT; if(!t) return; if(t.dataset.lineId) document.getElementById(t.dataset.lineId)?.remove(); t.remove(); ed.style.display='none'; ctx.style.display='none'; updateDiagnosis(); rec(); };
+        const opM = (e,t) => { 
+            e.preventDefault(); e.stopPropagation(); rT=t; 
+            ctx.style.display='block'; ctx.style.left=e.clientX+'px'; ctx.style.top=e.clientY+'px'; 
+            const isObj = t.classList && t.classList.contains && t.classList.contains('report-object');
+            const isSLine = t.isSLine;
+            document.getElementById('ctx-edit').style.display = isSLine ? 'block' : (isObj ? 'block' : 'block'); // Always show edit for now
+            document.getElementById('ctx-focal').style.display = (isObj || isSLine) ? 'none' : 'block';
+            document.getElementById('ctx-diffuse').style.display = (isObj || isSLine) ? 'none' : 'block';
+            document.getElementById('ctx-dup').style.display = (isObj || isSLine) ? 'block' : 'none';
+        };
+        const dup = () => {
+            if(!rT) return;
+            if(rT.isSLine) {
+                const n = crSmartLine(rT.p1.x + 2, rT.p1.y + 2, rT.p2.x + 2, rT.p2.y + 2);
+                n.cp.x = rT.cp.x + 2; n.cp.y = rT.cp.y + 2;
+                n.g.setAttribute('stroke-width', rT.el.getAttribute('stroke-width'));
+            } else {
+                const n = crObj(rT.dataset.type, rT.p1.x + 2, rT.p1.y + 2, rT.p2.x + 2, rT.p2.y + 2, rT.mid ? rT.mid.x + 2 : undefined, rT.mid ? rT.mid.y + 2 : undefined);
+                if (rT.dataset.w) {
+                    const w = parseFloat(rT.dataset.w);
+                    n.dataset.w = String(w);
+                    if (n.children[0]) { n.children[0].style.width = w+'px'; n.children[0].style.marginLeft = `-${w/2}px`; }
+                    if (n.children[1]) { n.children[1].style.width = w+'px'; n.children[1].style.marginLeft = `-${w/2}px`; }
+                }
+                n.style.opacity = rT.style.opacity;
+                n.dataset.vessel = rT.dataset.vessel || '';
+            }
+            ctx.style.display='none';
+        };
         const tgS = (s) => { if(!rT) return; if(s==='diffuse') rT.classList.add('diffuse'); else rT.classList.remove('diffuse'); ctx.style.display='none'; rec(); };
-        const chV = () => { const v=prompt("Değer:", rT.innerText); if(v) rT.innerText=v; ctx.style.display='none'; rec(); };
-        const upL = (l) => { const ln=document.getElementById(l.dataset.lineId); if(ln){ ln.setAttribute('x2',l.style.left); ln.setAttribute('y2',l.style.top); } };
+        const chV = () => { 
+            if(!rT) return;
+            if(rT.isSLine) {
+                const w = prompt("Çizgi Kalınlığı (1-20):", rT.el.getAttribute('stroke-width') || "3");
+                if(w) rT.el.setAttribute('stroke-width', w);
+            } else if(rT.classList && rT.classList.contains('report-object')) {
+                const opt = prompt("1: Damar İsmi\n2: Genişlik (px)\n3: Opaklık (0.1-1)\nSeçiminiz (1/2/3):", "1");
+                if(opt === "1") {
+                    const newV = prompt("Damar İsmi:", rT.dataset.vessel || "");
+                    if(newV !== null) rT.dataset.vessel = newV;
+                } else if(opt === "2") {
+                    const w = prompt("Genişlik (px):", rT.dataset.w || "25");
+                    if(w) {
+                        rT.dataset.w = String(parseFloat(w));
+                        const ww = parseFloat(w);
+                        if (rT.children[0]) { rT.children[0].style.width = ww + 'px'; rT.children[0].style.marginLeft = `-${ww/2}px`; }
+                        if (rT.children[1]) { rT.children[1].style.width = ww + 'px'; rT.children[1].style.marginLeft = `-${ww/2}px`; }
+                    }
+                } else if(opt === "3") {
+                    const op = prompt("Opaklık (0.1-1):", rT.style.opacity || "1");
+                    if(op) rT.style.opacity = op;
+                }
+            } else {
+                const v=prompt("Değer:", rT.innerText); if(v) rT.innerText=v; 
+            }
+            ctx.style.display='none'; rec(); 
+        };
 
-        const mkD = (el,mv) => { el.onmousedown=(e)=>{ if(e.button!==0) return; let p3=e.clientX, p4=e.clientY; document.onmousemove=(ev)=>{ let p1=p3-ev.clientX, p2=p4-ev.clientY; p3=ev.clientX; p4=ev.clientY; const r=ann.getBoundingClientRect(); el.style.left=(el.offsetLeft-p1)/r.width*100+'%'; el.style.top=(el.offsetTop-p2)/r.height*100+'%'; if(mv) mv(); }; document.onmouseup=()=>{ document.onmousemove=null; rec(); }; }; };
-        document.querySelectorAll('.field.draggable').forEach(f=>mkD(f)); mkD(document.getElementById('doctor-box'));
+        const isDragModifier = (e) => e.altKey;
+        const NON_GATED = new Set(['stenosis-label','free-text','stamp']);
+        const mkD = (el, mv) => {
+            el.addEventListener('pointerdown', (e) => {
+                if (e.button !== 0) return;
+                const tag = el.tagName;
+                const editable = el.hasAttribute('contentEditable') || tag === 'SELECT' || tag === 'INPUT' || tag === 'TEXTAREA';
+                const free = !editable || [...el.classList].some(c => NON_GATED.has(c)) || el.id === 'doctor-box';
+                if (!free && !isDragModifier(e)) return;
+                e.preventDefault();
+                e.stopPropagation();
+                if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+                const annR = ann.getBoundingClientRect();
+                const elR = el.getBoundingClientRect();
+                const offX = e.clientX - elR.left;
+                const offY = e.clientY - elR.top;
+                let tx = 0, ty = 0;
+                const xform = getComputedStyle(el).transform;
+                if (xform && xform !== 'none') {
+                    const m = xform.match(/matrix\(([^)]+)\)/);
+                    if (m) { const v = m[1].split(','); tx = parseFloat(v[4]) || 0; ty = parseFloat(v[5]) || 0; }
+                }
+                const z = currentZoom || 1;
+                try { el.setPointerCapture(e.pointerId); } catch {}
+                const onMove = (ev) => {
+                    const nx = (ev.clientX - annR.left - offX*0 + 0) / z; // placeholder
+                    const px = (ev.clientX - annR.left) - offX - tx;
+                    const py = (ev.clientY - annR.top) - offY - ty;
+                    el.style.left = (px / annR.width * 100) + '%';
+                    el.style.top = (py / annR.height * 100) + '%';
+                    if (mv) mv();
+                };
+                const onUp = (ev) => {
+                    el.removeEventListener('pointermove', onMove);
+                    el.removeEventListener('pointerup', onUp);
+                    el.removeEventListener('pointercancel', onUp);
+                    try { el.releasePointerCapture(ev.pointerId); } catch {}
+                    rec();
+                };
+                el.addEventListener('pointermove', onMove);
+                el.addEventListener('pointerup', onUp);
+                el.addEventListener('pointercancel', onUp);
+            });
+        };
+        document.querySelectorAll('.field.draggable, .checkbox.draggable').forEach(f => mkD(f));
+        mkD(document.getElementById('doctor-box'));
+        // Stamp drag-drop wiring (renderCustomStamps deferred until esc is defined)
+        wireStampSources();
+        ann.addEventListener('dragover', (e) => {
+            if (![...e.dataTransfer.types].includes('text/x-stamp')) return;
+            e.preventDefault(); e.dataTransfer.dropEffect = 'copy';
+            ann.classList.add('drop-target');
+        });
+        ann.addEventListener('dragleave', (e) => { if (e.target === ann) ann.classList.remove('drop-target'); });
+        ann.addEventListener('drop', (e) => {
+            const raw = e.dataTransfer.getData('text/x-stamp'); if (!raw) return;
+            e.preventDefault(); ann.classList.remove('drop-target');
+            const data = JSON.parse(raw);
+            const r = ann.getBoundingClientRect();
+            const x = (e.clientX - r.left) / r.width * 100;
+            const y = (e.clientY - r.top) / r.height * 100;
+            crStamp(x, y, data.label, data.cls);
+        });
+        document.querySelectorAll('.checkbox.draggable').forEach(cb => {
+            cb.addEventListener('click', (e) => { if (isDragModifier(e)) return; cb.classList.toggle('checked'); rec(); });
+        });
+        const drSel = document.getElementById('f-dr');
+        if (drSel) drSel.addEventListener('mousedown', (e) => { if (isDragModifier(e)) e.preventDefault(); });
+        window.addEventListener('keydown', (e) => { if (e.altKey) document.body.classList.add('alt-drag'); });
+        window.addEventListener('keyup', (e) => { if (!e.altKey) document.body.classList.remove('alt-drag'); });
+        window.addEventListener('blur', () => document.body.classList.remove('alt-drag'));
 
         const getT = (t) => JSON.parse(localStorage.getItem('anj_'+t)||'[]');
         const saveT = (t,l) => { localStorage.setItem('anj_'+t, JSON.stringify(l)); rTani(t); };
         const addT = (t) => { const i=document.getElementById('in-'+t), v=i.value.trim(); if(!v) return; const l=getT(t); l.push(v); saveT(t,l); i.value=''; };
         const esc = (s) => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-        const rTani = (t) => { 
+        renderCustomStamps();
+        const rTani = (t) => {
             const c=document.getElementById('list-'+t); if(!c) return; 
             const list = getT(t);
             c.innerHTML=list.map((item,i)=>{ const label=(t==='full_report'?(item&&item.name)||'Şablon':item); return `<div class="list-item" onclick="useT('${t}',${i},this)"><span>${esc(label)}</span><span onclick="delT('${t}',${i},event)" style="color:red">✕</span></div>`; }).join(''); 
@@ -334,6 +1144,11 @@
             });
             data.markers = Array.from(document.querySelectorAll('.stenosis-label')).map(l=>({x:l.style.left,y:l.style.top,v:l.innerText,vs:l.dataset.vessel,df:l.classList.contains('diffuse'),ln:document.getElementById(l.dataset.lineId)?{x1:document.getElementById(l.dataset.lineId).getAttribute('x1'),y1:document.getElementById(l.dataset.lineId).getAttribute('y1')}:null}));
             data.txts = Array.from(document.querySelectorAll('.free-text')).map(t=>({x:t.style.left,y:t.style.top,v:t.innerText})) ;
+            data.stamps = Array.from(document.querySelectorAll('.stamp')).map(s=>({x:s.style.left,y:s.style.top,v:s.innerText,cls:s.dataset.cls||'s-custom'}));
+            data.objs = Array.from(document.querySelectorAll('.report-object')).map(o=>({t:o.dataset.type, p1:o.p1, p2:o.p2, mid:o.mid, w:o.dataset.w, op:o.style.opacity, vs:o.dataset.vessel}));
+            data.slines = Array.from(document.querySelectorAll('.smart-line-path')).map(p => p.dataset.freehand
+                ? { freehand: true, pts: p.pts.map(pt => ({x: pt.x, y: pt.y})), sw: p.getAttribute('stroke-width') }
+                : { p1: p.p1, p2: p.p2, cp: p.cp, sw: p.getAttribute('stroke-width') });
             return data;
         };
         const saveFull = () => { const n=document.getElementById('in-full_report').value; if(!n) return; const l=getT('full_report'); l.push({name:n, state:cap()}); saveT('full_report',l); };
@@ -357,7 +1172,36 @@
                     if (s[key] !== undefined) el.innerText = s[key];
                 });
             }
-            document.querySelectorAll('.stenosis-label,.stenosis-point,.free-text').forEach(e=>e.remove()); svg.innerHTML=''; (s.markers||[]).forEach(m=>{ const l = m.ln ? crSL({x:parseFloat(m.ln.x1),y:parseFloat(m.ln.y1)},{x:parseFloat(m.x),y:parseFloat(m.y)},m.v.replace('%','')) : crS(parseFloat(m.x),parseFloat(m.y),m.v.replace('%','')); if(l){ l.dataset.vessel=m.vs||''; if(m.df) l.classList.add('diffuse'); } }); (s.txts||[]).forEach(t=>{ const tx=crT(parseFloat(t.x),parseFloat(t.y)); tx.innerText=t.v; }); };
+            document.querySelectorAll('.stenosis-label,.stenosis-point,.free-text,.stamp,.report-object,.smart-line-handle').forEach(e=>e.remove());
+            document.querySelectorAll('.smart-line-path').forEach(e=>e.remove());
+            svg.innerHTML=''; 
+            (s.markers||[]).forEach(m=>{ const l = m.ln ? crSL({x:parseFloat(m.ln.x1),y:parseFloat(m.ln.y1)},{x:parseFloat(m.x),y:parseFloat(m.y)},m.v.replace('%','')) : crS(parseFloat(m.x),parseFloat(m.y),m.v.replace('%','')); if(l){ l.dataset.vessel=m.vs||''; if(m.df) l.classList.add('diffuse'); } }); 
+            (s.txts||[]).forEach(t=>{ crT(parseFloat(t.x),parseFloat(t.y), t.v); });
+            (s.stamps||[]).forEach(st=>{ crStamp(parseFloat(st.x), parseFloat(st.y), st.v, st.cls); });
+            (s.objs||[]).forEach(o=>{
+                const p1 = o.p1 || {x: parseFloat(o.x), y: parseFloat(o.y)};
+                const p2 = o.p2 || {x: parseFloat(o.x), y: parseFloat(o.y) + 15};
+                const mid = o.mid;
+                const obj = crObj(o.t, p1.x, p1.y, p2.x, p2.y, mid?.x, mid?.y);
+                if (o.w) {
+                    const w = parseFloat(o.w) || 15;
+                    obj.dataset.w = String(w);
+                    obj.children[0].style.width = w + 'px'; obj.children[0].style.marginLeft = `-${w/2}px`;
+                    obj.children[1].style.width = w + 'px'; obj.children[1].style.marginLeft = `-${w/2}px`;
+                }
+                obj.style.opacity = o.op || '1';
+                obj.dataset.vessel = o.vs || '';
+            });
+            (s.slines||[]).forEach(sl=>{
+                if (sl.freehand && sl.pts && sl.pts.length >= 2) {
+                    crFreeLine(sl.pts.map(p=>({x:p.x,y:p.y})), sl.sw || '3');
+                } else if (sl.p1 && sl.p2) {
+                    const l = crSmartLine(sl.p1.x, sl.p1.y, sl.p2.x, sl.p2.y);
+                    if(sl.sw) l.g.setAttribute('stroke-width', sl.sw);
+                }
+            });
+            mkD(document.querySelector('.pci-report-area'));
+        };
 
         const rec = () => { const s=JSON.stringify(cap()); if(uS.length && uS[uS.length-1]===s) return; uS.push(s); rS=[]; };
         const undo = () => { if(uS.length<2) return; rS.push(uS.pop()); apply(uS[uS.length-1]); };
@@ -369,8 +1213,21 @@
         const impJSON = (i) => { const f=i.files[0]; if(!f) return; const r=new FileReader(); r.onload=(e)=>{ try{ const d=JSON.parse(e.target.result); saveT('tani',d.t||[]); saveT('konsey',d.k||[]); saveT('doktor',d.d||[]); saveT('full_report',d.f||[]); location.reload(); } catch(err){ alert('Geçersiz yedek dosyası: '+err.message); } }; r.readAsText(f); };
         const expCSV = () => { let c="Hasta,Tarih,Damar,Oran,Tani,Konsey\n"; document.querySelectorAll('.stenosis-label').forEach(m=>c+=`"${document.getElementById('f-name').innerText}","${document.getElementById('f-date').innerText}","${m.dataset.vessel||''}","${m.innerText.replace('%','')}", "${document.getElementById('f-tani').innerText}","${document.getElementById('f-konsey').innerText}"\n`); const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(["\uFEFF"+c],{type:'text/csv'})); a.download='rapor.csv'; a.click(); };
         
-        document.onclick = (e) => { if(!ed.contains(e.target)) ed.style.display='none'; ctx.style.display='none'; };
-        document.onkeydown = (e) => { if(e.ctrlKey || e.metaKey){ if(e.key==='z') undo(); if(e.key==='y') redo(); } };
+        document.onclick = (e) => {
+            const t = e.target;
+            const onLabel = t.classList && (t.classList.contains('stenosis-label') || t.classList.contains('free-text') || t.classList.contains('stamp'));
+            if (!ed.contains(t) && !onLabel) ed.style.display = 'none';
+            if (!ctx.contains(t)) ctx.style.display = 'none';
+        };
+        document.onkeydown = (e) => { 
+            if(e.ctrlKey || e.metaKey){ 
+                if(e.key==='z') { e.preventDefault(); undo(); }
+                if(e.key==='y') { e.preventDefault(); redo(); }
+                if(e.key==='+' || e.key==='=') { e.preventDefault(); zoom(0.1); }
+                if(e.key==='-') { e.preventDefault(); zoom(-0.1); }
+                if(e.key==='0') { e.preventDefault(); resetZoom(); }
+            } 
+        };
     </script>
 </body>
 </html>
