@@ -658,72 +658,56 @@
             c.p1 = p1; c.p2 = p2; c.mid = mid; c.manualMid = (midX !== undefined);
 
             const imgSrc = ({ stent: 'stent.png', lima: 'lima.png', safen: 'safen.png', damar: 'damarduvari.png' })[type];
-            const mkSeg = (part) => {
-                const seg = document.createElement('div');
-                seg.style.cssText = `position:absolute;width:${baseW}px;margin-left:-${baseW/2}px;transform-origin:top center;cursor:move;pointer-events:auto;z-index:60;overflow:hidden;`;
-                const img = document.createElement('img');
-                img.src = imgSrc;
-                img.style.cssText = 'width:100%;height:200%;mix-blend-mode:multiply;pointer-events:none;object-fit:fill;display:block;';
-                if (part === 'bottom') img.style.transform = 'translateY(-50%)';
-                seg.appendChild(img);
-                seg._img = img;
-                seg._part = part;
-                return seg;
-            };
-            const seg1 = mkSeg('top'), seg2 = mkSeg('bottom');
+            const SLICE_COUNT = 24;
+            // Container for slices (allows shared event handling, single child to ann)
+            const sliceWrap = document.createElement('div');
+            sliceWrap.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;';
+            const slices = [];
+            for (let i = 0; i < SLICE_COUNT; i++) {
+                const sl = document.createElement('div');
+                sl.style.cssText = `position:absolute;transform-origin:top center;cursor:move;pointer-events:auto;z-index:60;overflow:hidden;background-image:url(${imgSrc});background-repeat:no-repeat;mix-blend-mode:multiply;`;
+                slices.push(sl);
+                sliceWrap.appendChild(sl);
+            }
 
-            const segAngle = (a, b) => -Math.atan2(b.x - a.x, b.y - a.y) * 180 / Math.PI;
-            const renderSeg = (seg, a, b, distPx, extraTopPx, extraBottomPx) => {
-                const angle = segAngle(a, b);
-                seg.style.left = a.x + '%';
-                seg.style.top = a.y + '%';
-                seg.style.height = (distPx + extraTopPx + extraBottomPx) + 'px';
-                seg.style.marginTop = (-extraTopPx) + 'px';
-                seg.style.transform = `rotate(${angle}deg)`;
-            };
+            const bezier = (t, a, m, b) => ({
+                x: (1-t)*(1-t)*a.x + 2*(1-t)*t*m.x + t*t*b.x,
+                y: (1-t)*(1-t)*a.y + 2*(1-t)*t*m.y + t*t*b.y
+            });
+            const angDeg = (dx, dy) => -Math.atan2(dx, dy) * 180 / Math.PI;
             const up = () => {
                 const r = ann.getBoundingClientRect();
                 const w = parseFloat(c.dataset.w) || baseW;
-                const halfW = w / 2;
-                const d1 = Math.hypot(mid.x - p1.x, mid.y - p1.y) * r.height / 100;
-                const d2 = Math.hypot(p2.x - mid.x, p2.y - mid.y) * r.height / 100;
-                const a1 = segAngle(p1, mid), a2 = segAngle(mid, p2);
-                let bend = a2 - a1;
-                while (bend > 180) bend -= 360;
-                while (bend < -180) bend += 360;
-                if (Math.abs(bend) < 8) {
-                    const total = Math.hypot(p2.x - p1.x, p2.y - p1.y) * r.height / 100;
-                    seg2.style.display = 'none';
-                    seg1._img.style.height = '100%';
-                    seg1._img.style.transform = 'none';
-                    renderSeg(seg1, p1, p2, total, 0, 0);
-                    seg1.style.clipPath = 'none';
-                    hTop.style.left = p1.x + '%'; hTop.style.top = p1.y + '%';
-                    hMid.style.left = mid.x + '%'; hMid.style.top = mid.y + '%';
-                    h2.style.left = p2.x + '%'; h2.style.top = p2.y + '%';
-                    return;
+                // For Q curve through mid: control point CP for B(0.5)=mid → CP = 2*mid - (p1+p2)/2
+                const cp = { x: 2*mid.x - (p1.x + p2.x)/2, y: 2*mid.y - (p1.y + p2.y)/2 };
+                // Sample N+1 points along curve in pixel space
+                const pts = [];
+                for (let i = 0; i <= SLICE_COUNT; i++) {
+                    const t = i / SLICE_COUNT;
+                    const pPct = bezier(t, p1, cp, p2);
+                    pts.push({ x: pPct.x * r.width / 100, y: pPct.y * r.height / 100, xp: pPct.x, yp: pPct.y });
                 }
-                seg2.style.display = 'block';
-                seg1._img.style.height = '200%';
-                seg1._img.style.transform = 'none';
-                seg2._img.style.height = '200%';
-                seg2._img.style.transform = 'translateY(-50%)';
-                const halfBend = bend / 2;
-                const tiltRad = halfBend * Math.PI / 180;
-                const tan = Math.tan(tiltRad);
-                const offset = tan * halfW;
-                const absOff = Math.abs(offset);
-                const overlap = Math.min(28, Math.max(12, halfW * 0.8));
-                renderSeg(seg1, p1, mid, d1, 0, absOff + overlap);
-                renderSeg(seg2, mid, p2, d2, absOff + overlap, 0);
-                const h1Total = d1 + absOff + overlap;
-                const h2Total = d2 + absOff + overlap;
-                if (offset >= 0) {
-                    seg1.style.clipPath = `polygon(0 0, ${w}px 0, ${w}px ${h1Total - offset*2}px, 0 ${h1Total}px)`;
-                    seg2.style.clipPath = `polygon(0 ${Math.max(0, absOff*2 - overlap)}px, ${w}px 0, ${w}px ${h2Total}px, 0 ${h2Total}px)`;
-                } else {
-                    seg1.style.clipPath = `polygon(0 0, ${w}px 0, ${w}px ${h1Total}px, 0 ${h1Total - absOff*2}px)`;
-                    seg2.style.clipPath = `polygon(0 0, ${w}px ${Math.max(0, absOff*2 - overlap)}px, ${w}px ${h2Total}px, 0 ${h2Total}px)`;
+                // Total polyline length
+                let totalLen = 0;
+                for (let i = 0; i < SLICE_COUNT; i++) {
+                    totalLen += Math.hypot(pts[i+1].x - pts[i].x, pts[i+1].y - pts[i].y);
+                }
+                let acc = 0;
+                for (let i = 0; i < SLICE_COUNT; i++) {
+                    const a = pts[i], b = pts[i+1];
+                    const dx = b.x - a.x, dy = b.y - a.y;
+                    const segLen = Math.hypot(dx, dy);
+                    const ang = angDeg(dx, dy);
+                    const sl = slices[i];
+                    sl.style.left = a.xp + '%';
+                    sl.style.top = a.yp + '%';
+                    sl.style.width = w + 'px';
+                    sl.style.height = (segLen + 0.6) + 'px';
+                    sl.style.marginLeft = (-w/2) + 'px';
+                    sl.style.transform = `rotate(${ang}deg)`;
+                    sl.style.backgroundSize = `${w}px ${totalLen}px`;
+                    sl.style.backgroundPosition = `0px ${-acc}px`;
+                    acc += segLen;
                 }
                 hTop.style.left = p1.x + '%'; hTop.style.top = p1.y + '%';
                 hMid.style.left = mid.x + '%'; hMid.style.top = mid.y + '%';
@@ -823,23 +807,22 @@
                 ann.appendChild(h);
             });
 
-            // Segments: click selects, contextmenu, shift+wheel = width
-            [seg1, seg2].forEach(seg => {
-                seg.oncontextmenu = (e) => opM(e, c);
-                seg.onclick = (e) => { e.stopPropagation(); document.querySelectorAll('.selected').forEach(el=>el.classList.remove('selected')); c.classList.add('selected'); };
-                seg.addEventListener('wheel', (e) => {
+            // Slices: click selects, contextmenu, shift+wheel = width
+            slices.forEach(sl => {
+                sl.oncontextmenu = (e) => opM(e, c);
+                sl.onclick = (e) => { e.stopPropagation(); document.querySelectorAll('.selected').forEach(el=>el.classList.remove('selected')); c.classList.add('selected'); };
+                sl.addEventListener('wheel', (e) => {
                     if (!e.shiftKey) return;
                     e.preventDefault();
                     const cur = parseFloat(c.dataset.w) || baseW;
                     const next = Math.max(4, Math.min(200, cur + (e.deltaY < 0 ? 2 : -2)));
                     c.dataset.w = String(next);
-                    seg1.style.width = next + 'px'; seg1.style.marginLeft = `-${next/2}px`;
-                    seg2.style.width = next + 'px'; seg2.style.marginLeft = `-${next/2}px`;
+                    up();
                     rec();
                 }, { passive: false });
             });
 
-            c.appendChild(seg1); c.appendChild(seg2);
+            c.appendChild(sliceWrap);
             c.remove = ((old) => () => { old.call(c); hTop.remove(); hMid.remove(); h2.remove(); })(c.remove);
             c.oncontextmenu = (e) => opM(e, c);
 
