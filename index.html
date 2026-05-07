@@ -570,7 +570,15 @@
             
             if(mode === 'select') return;
             const rc = ann.getBoundingClientRect(), x = (e.clientX-rc.left)/rc.width*100, y = (e.clientY-rc.top)/rc.height*100;
-            if(mode==='direct') { const v=prompt("Darlık Oranı %:", "70"); if(v) { const l=crS(x,y,v); l.dataset.vessel = detectVessel(x,y); updateDiagnosis(); } setMode('select'); }
+            if(mode==='direct') {
+                const l = crS(x, y, '');
+                l.dataset.vessel = detectVessel(x, y);
+                updateDiagnosis();
+                setMode('select');
+                opE(l, e.clientX, e.clientY);
+                const val = document.getElementById('e-val');
+                setTimeout(() => { val.focus(); val.select(); }, 0);
+            }
             else if(mode==='line') {
                 if(!lineStart) {
                     lineStart={x,y};
@@ -607,7 +615,7 @@
             c.dataset.type = type;
             c.dataset.w = String(baseW);
             c.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:60;display:block;outline:none;';
-            c.p1 = p1; c.p2 = p2; c.mid = mid;
+            c.p1 = p1; c.p2 = p2; c.mid = mid; c.manualMid = (midX !== undefined);
 
             const imgSrc = ({ stent: 'stent.png', lima: 'lima.png', safen: 'safen.png', damar: 'damarduvari.png' })[type];
             const mkSeg = (part) => {
@@ -746,6 +754,7 @@
                     const ny = (ev.clientY - r.top) / r.height * 100;
                     mid.x = smid.x + (nx - sx) * SCALE;
                     mid.y = smid.y + (ny - sy) * SCALE;
+                    c.manualMid = true;
                     up();
                 };
                 const upH = (ev) => {
@@ -758,13 +767,14 @@
                 hMid.addEventListener('pointerup', upH);
             });
 
-            // h2 (mavi tip) at p2: end point
+            // h2 (mavi tip) at p2: end point — auto-updates mid if not manually bent
             const h2 = document.createElement('div');
             h2.className = 'report-object-handle tip';
             h2.addEventListener('pointerdown', drag(h2, (ev) => {
                 const r = ann.getBoundingClientRect();
                 p2.x = (ev.clientX - r.left) / r.width * 100;
                 p2.y = (ev.clientY - r.top) / r.height * 100;
+                if (!c.manualMid) { mid.x = (p1.x + p2.x) / 2; mid.y = (p1.y + p2.y) / 2; }
                 up();
             }));
 
@@ -999,10 +1009,10 @@
         });
 
         const upL = (l) => { const ln=document.getElementById(l.dataset.lineId); if(ln){ ln.setAttribute('x2',l.style.left); ln.setAttribute('y2',l.style.top); } updateDiagnosis(); rec(); };
-        const crS = (x,y,v) => { const l=document.createElement('div'); l.className='stenosis-label'; l.style.left=x+'%'; l.style.top=y+'%'; l.innerHTML='%'+v; l.onclick=(e)=>{e.stopPropagation(); opE(l,e.clientX,e.clientY);}; l.oncontextmenu=(e)=>opM(e,l); mkD(l, ()=>updateDiagnosis()); ann.appendChild(l); rec(); return l; };
+        const crS = (x,y,v) => { const l=document.createElement('div'); l.className='stenosis-label'; l.style.left=x+'%'; l.style.top=y+'%'; l.innerHTML = v ? ('%'+v) : '%?'; l.onclick=(e)=>{e.stopPropagation(); opE(l,e.clientX,e.clientY);}; l.oncontextmenu=(e)=>opM(e,l); mkD(l, ()=>updateDiagnosis()); ann.appendChild(l); rec(); return l; };
         const crSL = (s,e,v) => {
             const lId='l-'+Math.random().toString(36).substr(2,5), p=document.createElement('div'); p.className='stenosis-point'; p.style.left=s.x+'%'; p.style.top=s.y+'%'; ann.appendChild(p);
-            const l=document.createElement('div'); l.className='stenosis-label'; l.style.left=e.x+'%'; l.style.top=e.y+'%'; l.innerHTML='%'+v; l.dataset.lineId=lId; l.onclick=(ev)=>{ev.stopPropagation(); opE(l,ev.clientX,ev.clientY);}; l.oncontextmenu=(ev)=>opM(ev,l); mkD(l,()=>upL(l)); ann.appendChild(l);
+            const l=document.createElement('div'); l.className='stenosis-label'; l.style.left=e.x+'%'; l.style.top=e.y+'%'; l.innerHTML = v ? ('%'+v) : '%?'; l.dataset.lineId=lId; l.onclick=(ev)=>{ev.stopPropagation(); opE(l,ev.clientX,ev.clientY);}; l.oncontextmenu=(ev)=>opM(ev,l); mkD(l,()=>upL(l)); ann.appendChild(l);
             const ln=document.createElementNS('http://www.w3.org/2000/svg','line'); ln.id=lId; ln.setAttribute('x1',s.x+'%'); ln.setAttribute('y1',s.y+'%'); ln.setAttribute('x2',e.x+'%'); ln.setAttribute('y2',e.y+'%'); ln.setAttribute('stroke','#000'); ln.setAttribute('stroke-width','1.5'); svg.appendChild(ln); rec(); return l;
         };
         const crT = (x, y, val) => {
