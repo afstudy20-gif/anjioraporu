@@ -373,9 +373,6 @@
             <div contenteditable="true" id="f-risk-hpl" class="field draggable" style="top: 46.7%; left: 93%; width: 5%;"></div>
             <div contenteditable="true" id="f-risk-aile" class="field draggable" style="top: 49.1%; left: 93%; width: 5%;"></div>
 
-            <!-- Auto vessel diagnosis (LMCA/LAD/CX/RCA summary) -->
-            <div contenteditable="true" id="f-auto-tani" class="field draggable" style="top: 30%; left: 4%; width: 22%; min-height: 70px; font-size: 11px; line-height: 1.4; white-space: pre-wrap; background: rgba(255,255,255,0.7); padding: 4px 6px; border-radius: 4px; border: 1px dashed #cbd5e1;"></div>
-
             <!-- Bottom Fields -->
             <div contenteditable="true" id="f-dominant" class="field draggable" style="top: 84.8%; left: 18%; width: 20%;"></div>
             <div contenteditable="true" id="f-tani" class="field draggable" style="top: 87.0%; left: 12%; width: 82%;"></div>
@@ -576,7 +573,25 @@
             if(mode === 'select') return;
             const rc = ann.getBoundingClientRect(), x = (e.clientX-rc.left)/rc.width*100, y = (e.clientY-rc.top)/rc.height*100;
             if(mode==='direct') { const v=prompt("Darlık Oranı %:", "70"); if(v) { const l=crS(x,y,v); l.dataset.vessel = detectVessel(x,y); updateDiagnosis(); } setMode('select'); }
-            else if(mode==='line') { if(!lineStart) { lineStart={x,y}; const p=document.createElement('div'); p.className='stenosis-point pending'; p.style.left=x+'%'; p.style.top=y+'%'; ann.appendChild(p); } else { const v=prompt("Darlık Oranı %:", "70"); if(v) { document.querySelectorAll('.stenosis-point.pending').forEach(p=>p.remove()); const l=crSL(lineStart,{x,y},v); l.dataset.vessel = detectVessel(x,y); updateDiagnosis(); } lineStart=null; setMode('select'); } }
+            else if(mode==='line') {
+                if(!lineStart) {
+                    lineStart={x,y};
+                    const p=document.createElement('div');
+                    p.className='stenosis-point pending';
+                    p.style.left=x+'%'; p.style.top=y+'%';
+                    ann.appendChild(p);
+                } else {
+                    document.querySelectorAll('.stenosis-point.pending').forEach(p=>p.remove());
+                    const l=crSL(lineStart,{x,y},'');
+                    l.dataset.vessel = detectVessel(lineStart.x,lineStart.y);
+                    updateDiagnosis();
+                    lineStart=null;
+                    setMode('select');
+                    opE(l,e.clientX,e.clientY);
+                    const val = document.getElementById('e-val');
+                    setTimeout(() => { val.focus(); val.select(); }, 0);
+                }
+            }
             else if(mode==='sline') { if(!lineStart) { lineStart={x,y}; const p=document.createElement('div'); p.className='stenosis-point pending'; p.style.left=x+'%'; p.style.top=y+'%'; ann.appendChild(p); } else { document.querySelectorAll('.stenosis-point.pending').forEach(p=>p.remove()); crSmartLine(lineStart.x, lineStart.y, x, y); lineStart=null; } }
             else if(mode==='text') crT(x,y);
             else if(mode==='stamp' && curStamp) { crStamp(x, y, curStamp.label, curStamp.cls); setMode('select'); }
@@ -597,16 +612,19 @@
             c.p1 = p1; c.p2 = p2; c.mid = mid;
 
             const imgSrc = ({ stent: 'stent.png', lima: 'lima.png', safen: 'safen.png', damar: 'damarduvari.png' })[type];
-            const mkSeg = () => {
+            const mkSeg = (part) => {
                 const seg = document.createElement('div');
-                seg.style.cssText = `position:absolute;width:${baseW}px;margin-left:-${baseW/2}px;transform-origin:top center;cursor:move;pointer-events:auto;z-index:60;`;
+                seg.style.cssText = `position:absolute;width:${baseW}px;margin-left:-${baseW/2}px;transform-origin:top center;cursor:move;pointer-events:auto;z-index:60;overflow:hidden;`;
                 const img = document.createElement('img');
                 img.src = imgSrc;
-                img.style.cssText = 'width:100%;height:100%;mix-blend-mode:multiply;pointer-events:none;object-fit:fill;display:block;';
+                img.style.cssText = 'width:100%;height:200%;mix-blend-mode:multiply;pointer-events:none;object-fit:fill;display:block;';
+                if (part === 'bottom') img.style.transform = 'translateY(-50%)';
                 seg.appendChild(img);
+                seg._img = img;
+                seg._part = part;
                 return seg;
             };
-            const seg1 = mkSeg(), seg2 = mkSeg();
+            const seg1 = mkSeg('top'), seg2 = mkSeg('bottom');
 
             const segAngle = (a, b) => -Math.atan2(b.x - a.x, b.y - a.y) * 180 / Math.PI;
             const renderSeg = (seg, a, b, distPx, extraTopPx, extraBottomPx) => {
@@ -627,21 +645,39 @@
                 let bend = a2 - a1;
                 while (bend > 180) bend -= 360;
                 while (bend < -180) bend += 360;
+                if (Math.abs(bend) < 8) {
+                    const total = Math.hypot(p2.x - p1.x, p2.y - p1.y) * r.height / 100;
+                    seg2.style.display = 'none';
+                    seg1._img.style.height = '100%';
+                    seg1._img.style.transform = 'none';
+                    renderSeg(seg1, p1, p2, total, 0, 0);
+                    seg1.style.clipPath = 'none';
+                    hTop.style.left = p1.x + '%'; hTop.style.top = p1.y + '%';
+                    hMid.style.left = mid.x + '%'; hMid.style.top = mid.y + '%';
+                    h2.style.left = p2.x + '%'; h2.style.top = p2.y + '%';
+                    return;
+                }
+                seg2.style.display = 'block';
+                seg1._img.style.height = '200%';
+                seg1._img.style.transform = 'none';
+                seg2._img.style.height = '200%';
+                seg2._img.style.transform = 'translateY(-50%)';
                 const halfBend = bend / 2;
                 const tiltRad = halfBend * Math.PI / 180;
                 const tan = Math.tan(tiltRad);
                 const offset = tan * halfW;
                 const absOff = Math.abs(offset);
-                renderSeg(seg1, p1, mid, d1, 0, absOff);
-                renderSeg(seg2, mid, p2, d2, absOff, 0);
-                const h1Total = d1 + absOff;
-                const h2Total = d2 + absOff;
+                const overlap = Math.min(28, Math.max(12, halfW * 0.8));
+                renderSeg(seg1, p1, mid, d1, 0, absOff + overlap);
+                renderSeg(seg2, mid, p2, d2, absOff + overlap, 0);
+                const h1Total = d1 + absOff + overlap;
+                const h2Total = d2 + absOff + overlap;
                 if (offset >= 0) {
                     seg1.style.clipPath = `polygon(0 0, ${w}px 0, ${w}px ${h1Total - offset*2}px, 0 ${h1Total}px)`;
-                    seg2.style.clipPath = `polygon(0 ${absOff*2}px, ${w}px 0, ${w}px ${h2Total}px, 0 ${h2Total}px)`;
+                    seg2.style.clipPath = `polygon(0 ${Math.max(0, absOff*2 - overlap)}px, ${w}px 0, ${w}px ${h2Total}px, 0 ${h2Total}px)`;
                 } else {
                     seg1.style.clipPath = `polygon(0 0, ${w}px 0, ${w}px ${h1Total}px, 0 ${h1Total - absOff*2}px)`;
-                    seg2.style.clipPath = `polygon(0 0, ${w}px ${absOff*2}px, ${w}px ${h2Total}px, 0 ${h2Total}px)`;
+                    seg2.style.clipPath = `polygon(0 0, ${w}px ${Math.max(0, absOff*2 - overlap)}px, ${w}px ${h2Total}px, 0 ${h2Total}px)`;
                 }
                 hTop.style.left = p1.x + '%'; hTop.style.top = p1.y + '%';
                 hMid.style.left = mid.x + '%'; hMid.style.top = mid.y + '%';
@@ -757,11 +793,11 @@
             
             const up = () => {
                 const r = ann.getBoundingClientRect();
-                const d = `M ${x1*r.width/100} ${y1*r.height/100} Q ${cp.x*r.width/100} ${cp.y*r.height/100} ${x2*r.width/100} ${y2*r.height/100}`;
+                const d = `M ${p1.x*r.width/100} ${p1.y*r.height/100} Q ${cp.x*r.width/100} ${cp.y*r.height/100} ${p2.x*r.width/100} ${p2.y*r.height/100}`;
                 g.setAttribute('d', d);
-                h1.style.left = x1 + '%'; h1.style.top = y1 + '%';
+                h1.style.left = p1.x + '%'; h1.style.top = p1.y + '%';
                 hc.style.left = cp.x + '%'; hc.style.top = cp.y + '%';
-                h2.style.left = x2 + '%'; h2.style.top = y2 + '%';
+                h2.style.left = p2.x + '%'; h2.style.top = p2.y + '%';
             };
 
             const mkH = (p, isCP) => {
@@ -785,6 +821,7 @@
             const h1 = mkH(p1), hc = mkH(cp, true), h2 = mkH(p2);
             
             g.p1 = p1; g.p2 = p2; g.cp = cp; // Store for persistence
+            g.refresh = up;
             g.setAttribute('stroke-width', '3');
 
             const slT = { 
@@ -801,7 +838,7 @@
             up();
             setMode('select');
             rec();
-            return { g, h1, hc, h2, p1, p2, cp };
+            return { g, h1, hc, h2, p1, p2, cp, refresh: up };
         };
 
         // Ramer–Douglas–Peucker: drop points within `eps` of the line between kept neighbors.
@@ -959,7 +996,7 @@
             rec(); return t;
         };
 
-        const opE = (t,x,y) => { eT=t; ed.style.display='block'; ed.style.left=(x+10)+'px'; ed.style.top=(y+10)+'px'; document.getElementById('e-val').value=t.innerText.replace('%',''); document.getElementById('e-vessel').value=t.dataset.vessel||''; };
+        const opE = (t,x,y) => { eT=t; ed.style.display='block'; ed.style.left=(x+10)+'px'; ed.style.top=(y+10)+'px'; const val=document.getElementById('e-val'); val.value=t.innerText.replace('%',''); document.getElementById('e-vessel').value=t.dataset.vessel||''; setTimeout(() => { val.focus(); val.select(); }, 0); };
         const apE = (s) => { if(!eT) return; eT.innerText='%'+document.getElementById('e-val').value; eT.dataset.vessel=document.getElementById('e-vessel').value; if(s==='diffuse') eT.classList.add('diffuse'); else eT.classList.remove('diffuse'); ed.style.display='none'; updateDiagnosis(); rec(); };
         const delC = () => { const t=eT||rT; if(!t) return; if(t.dataset.lineId) document.getElementById(t.dataset.lineId)?.remove(); t.remove(); ed.style.display='none'; ctx.style.display='none'; updateDiagnosis(); rec(); };
         const opM = (e,t) => { 
@@ -978,6 +1015,7 @@
                 const n = crSmartLine(rT.p1.x + 2, rT.p1.y + 2, rT.p2.x + 2, rT.p2.y + 2);
                 n.cp.x = rT.cp.x + 2; n.cp.y = rT.cp.y + 2;
                 n.g.setAttribute('stroke-width', rT.el.getAttribute('stroke-width'));
+                n.refresh();
             } else {
                 const n = crObj(rT.dataset.type, rT.p1.x + 2, rT.p1.y + 2, rT.p2.x + 2, rT.p2.y + 2, rT.mid ? rT.mid.x + 2 : undefined, rT.mid ? rT.mid.y + 2 : undefined);
                 if (rT.dataset.w) {
@@ -1197,7 +1235,9 @@
                     crFreeLine(sl.pts.map(p=>({x:p.x,y:p.y})), sl.sw || '3');
                 } else if (sl.p1 && sl.p2) {
                     const l = crSmartLine(sl.p1.x, sl.p1.y, sl.p2.x, sl.p2.y);
+                    if(sl.cp) { l.cp.x = sl.cp.x; l.cp.y = sl.cp.y; }
                     if(sl.sw) l.g.setAttribute('stroke-width', sl.sw);
+                    l.refresh();
                 }
             });
             mkD(document.querySelector('.pci-report-area'));
