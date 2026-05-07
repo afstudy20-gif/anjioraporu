@@ -1110,7 +1110,24 @@
             rec(); return t;
         };
 
-        const opE = (t,x,y) => { eT=t; ed.style.display='block'; ed.style.left=(x+10)+'px'; ed.style.top=(y+10)+'px'; const val=document.getElementById('e-val'); val.value=t.innerText.replace('%',''); document.getElementById('e-vessel').value=t.dataset.vessel||''; setTimeout(() => { val.focus(); val.select(); }, 0); };
+        const opE = (t,x,y) => {
+            eT = t;
+            ed.style.display = 'block';
+            const r = t.getBoundingClientRect();
+            const edW = 200, edH = 90;
+            let left = r.right + 10;
+            let top = r.top;
+            if (left + edW > window.innerWidth - 10) left = r.left - edW - 10;
+            if (left < 10) left = 10;
+            if (top + edH > window.innerHeight - 10) top = window.innerHeight - edH - 10;
+            if (top < 10) top = 10;
+            ed.style.left = left + 'px';
+            ed.style.top = top + 'px';
+            const val = document.getElementById('e-val');
+            val.value = t.innerText.replace('%','').replace('?','');
+            document.getElementById('e-vessel').value = t.dataset.vessel || '';
+            setTimeout(() => { val.focus(); val.select(); }, 0);
+        };
         const apE = (s) => { if(!eT) return; eT.innerText='%'+document.getElementById('e-val').value; eT.dataset.vessel=document.getElementById('e-vessel').value; if(s==='diffuse') eT.classList.add('diffuse'); else eT.classList.remove('diffuse'); ed.style.display='none'; updateDiagnosis(); rec(); };
         const confirmE = () => { if(!eT) return; const v=document.getElementById('e-val').value; eT.innerText = v ? ('%'+v) : ''; eT.dataset.vessel=document.getElementById('e-vessel').value; ed.style.display='none'; updateDiagnosis(); rec(); };
         const delC = () => { const t=eT||rT; if(!t) return; if(t.dataset.lineId) document.getElementById(t.dataset.lineId)?.remove(); t.remove(); ed.style.display='none'; ctx.style.display='none'; updateDiagnosis(); rec(); };
