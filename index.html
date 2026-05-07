@@ -1138,7 +1138,7 @@
         const rTani = (t) => {
             const c=document.getElementById('list-'+t); if(!c) return; 
             const list = getT(t);
-            c.innerHTML=list.map((item,i)=>{ const label=(t==='full_report'?(item&&item.name)||'Şablon':item); return `<div class="list-item" onclick="useT('${t}',${i},this)"><span>${esc(label)}</span><span onclick="delT('${t}',${i},event)" style="color:red">✕</span></div>`; }).join(''); 
+            c.innerHTML=list.map((item,i)=>{ const label = (t==='full_report' || t==='layout') ? ((item && item.name) || 'Şablon') : item; return `<div class="list-item" onclick="useT('${t}',${i},this)"><span>${esc(label)}</span><span onclick="delT('${t}',${i},event)" style="color:red">✕</span></div>`; }).join('');
             if (t === 'doktor') {
                 const drSel = document.getElementById('f-dr');
                 if (drSel) {
@@ -1154,20 +1154,37 @@
         const capL = () => {
             const data = {};
             document.querySelectorAll('[id^="f-"]').forEach(el => {
-                data[el.id.replace('f-', '')] = { x: el.style.left, y: el.style.top };
+                data[el.id.replace('f-', '')] = {
+                    x: el.style.left,
+                    y: el.style.top,
+                    w: el.style.width,
+                    h: el.style.height,
+                    fs: el.style.fontSize
+                };
             });
             return data;
         };
-        const saveL = () => { const n=document.getElementById('in-layout').value; if(!n) return; const l=getT('layout'); l.push({name:n, state:capL()}); saveT('layout',l); };
+        const saveL = () => {
+            const n = document.getElementById('in-layout').value.trim();
+            if (!n) { alert('Yerleşim adı girin'); return; }
+            const l = getT('layout');
+            l.push({ name: n, state: capL() });
+            saveT('layout', l);
+            document.getElementById('in-layout').value = '';
+        };
         const loadL = (s) => {
-            if(!s) return;
+            if (!s) return;
             Object.keys(s).forEach(key => {
                 const el = document.getElementById('f-' + key);
                 if (el && s[key]) {
                     if (s[key].x) el.style.left = s[key].x;
                     if (s[key].y) el.style.top = s[key].y;
+                    if (s[key].w) el.style.width = s[key].w;
+                    if (s[key].h) el.style.height = s[key].h;
+                    if (s[key].fs) el.style.fontSize = s[key].fs;
                 }
             });
+            rec();
         };
 
         const cap = () => {
