@@ -172,22 +172,23 @@
 
         .pci-report-area {
             position: absolute;
-            top: 76%;
-            left: 8%;
-            width: 84%;
-            height: 21.5%;
+            top: 78%;
+            left: 9%;
+            width: 79%;
+            height: 18.5%;
             font-size: 13px;
             line-height: 1.5;
-            padding: 15px;
-            border: 1px dashed #cbd5e1;
+            padding: 12px;
+            border: 1px dashed transparent;
             overflow-y: auto;
             text-align: left;
             color: #000;
-            background: white;
+            background: transparent;
             z-index: 10;
             display: none;
+            box-sizing: border-box;
         }
-        .pci-report-area:focus { border-color: var(--p); background: #f0f9ff; outline: none; }
+        .pci-report-area:focus { border-color: #999; background: rgba(255,255,255,0.5); outline: none; }
         
         @media print {
             @page { size: A4; margin: 0; }
