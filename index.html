@@ -660,14 +660,14 @@
             c.p1 = p1; c.p2 = p2; c.mid = mid; c.manualMid = (midX !== undefined);
 
             const imgSrc = ({ stent: 'stent.png', lima: 'lima.png', safen: 'safen.png', damar: 'damarduvari.png' })[type];
-            const SLICE_COUNT = 24;
-            // Container for slices (allows shared event handling, single child to ann)
+            const SLICE_COUNT = 48;
+            const SLICE_OVERLAP = 1.4; // px overlap to hide seams
             const sliceWrap = document.createElement('div');
             sliceWrap.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;';
             const slices = [];
             for (let i = 0; i < SLICE_COUNT; i++) {
                 const sl = document.createElement('div');
-                sl.style.cssText = `position:absolute;transform-origin:top center;cursor:move;pointer-events:auto;z-index:60;overflow:hidden;background-image:url(${imgSrc});background-repeat:no-repeat;mix-blend-mode:multiply;`;
+                sl.style.cssText = `position:absolute;transform-origin:top center;cursor:move;pointer-events:auto;z-index:60;overflow:hidden;background-image:url(${imgSrc});background-repeat:no-repeat;mix-blend-mode:multiply;will-change:transform;backface-visibility:hidden;`;
                 slices.push(sl);
                 sliceWrap.appendChild(sl);
             }
@@ -704,7 +704,7 @@
                     sl.style.left = a.xp + '%';
                     sl.style.top = a.yp + '%';
                     sl.style.width = w + 'px';
-                    sl.style.height = (segLen + 0.6) + 'px';
+                    sl.style.height = (segLen + SLICE_OVERLAP) + 'px';
                     sl.style.marginLeft = (-w/2) + 'px';
                     sl.style.transform = `rotate(${ang}deg)`;
                     sl.style.backgroundSize = `${w}px ${totalLen}px`;
