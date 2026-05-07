@@ -50,17 +50,19 @@
         #annotation-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; z-index: 10; pointer-events: auto; }
         #svg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
         
-        .stenosis-point { position: absolute; width: 6px; height: 6px; background: var(--s); border-radius: 50%; transform: translate(-50%, -50%); z-index: 50; pointer-events: none; }
+        .stenosis-point { position: absolute; width: 6px; height: 6px; background: #000; border-radius: 50%; transform: translate(-50%, -50%); z-index: 50; pointer-events: none; }
         .field { position: absolute; cursor: move; min-height: 18px; padding: 0 2px; min-width: 40px; border-bottom: 1px solid transparent; z-index: 100; pointer-events: auto; color: #000; }
-        .field:focus { outline: none; border-bottom: 1px solid rgba(249,115,22,0.3); background: rgba(249,115,22,0.03); cursor: text; }
-        .field.grey { background: rgba(0,0,0,0.03); }
+        .field:focus { outline: none; border-bottom: 1px solid #000; background: transparent; cursor: text; }
+        .field.grey { background: transparent; }
         .stenosis-label {
-            position: absolute; background: var(--s); color: white; padding: 1px 5px;
-            border-radius: 3px; font-size: 10px; font-weight: 700; transform: translate(-50%, -50%);
-            cursor: move; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            position: absolute; background: transparent; color: #000; padding: 1px 4px;
+            border-radius: 3px; font-size: 14px; font-weight: 700; transform: translate(-50%, -50%);
+            cursor: move; z-index: 100; border: 1.5px solid #000;
         }
-        .diffuse { padding: 3px 8px; border-radius: 10px; border: 2px solid white; box-shadow: 0 0 0 1px var(--s); }
-        .free-text { position: absolute; color: #000; font-weight: 700; cursor: move; white-space: nowrap; min-width: 60px; min-height: 18px; background: rgba(255,255,255,0.8); border-radius: 4px; padding: 2px 4px; border: 1px dashed #cbd5e1; z-index: 110; pointer-events: auto; }
+        .diffuse { padding: 2px 6px; border-radius: 10px; border: 1.5px dashed #000; }
+        .free-text { position: absolute; color: #000; font-weight: 700; cursor: move; white-space: nowrap; min-width: 60px; min-height: 18px; background: transparent; border-radius: 0; padding: 2px 4px; border: none; z-index: 110; pointer-events: auto; font-size: 13px; }
+        .free-text[contenteditable="true"]:focus { outline: 1px dashed #999; cursor: text; }
+        .free-text[contenteditable="true"]:empty::before { content: attr(data-placeholder); color: #999; font-style: italic; font-weight: 400; }
         #doctor-box { position: absolute; bottom: 8%; right: 10%; width: 180px; font-weight: 600; cursor: move; z-index: 120; pointer-events: auto; }
         select.field { -webkit-appearance: none; -moz-appearance: none; appearance: none; background: transparent; border: none; padding: 0; cursor: pointer; color: inherit; font-family: inherit; font-size: inherit; }
         select.field:focus { outline: none; background: #eff6ff; }
@@ -150,12 +152,8 @@
         }
         .smart-line-path:hover { stroke: var(--p); }
 
-        .stamp { position: absolute; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; cursor: move; white-space: nowrap; transform: translate(-50%, -50%); z-index: 90; pointer-events: auto; border: none; color: #000; }
-        .stamp.s-normal { background: #d1fae5; }
-        .stamp.s-slow   { background: #fef3c7; }
-        .stamp.s-ektazi { background: #ede9fe; }
-        .stamp.s-bridge { background: #dbeafe; }
-        .stamp.s-custom { background: #f1f5f9; }
+        .stamp { position: absolute; padding: 2px 8px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: move; white-space: nowrap; transform: translate(-50%, -50%); z-index: 90; pointer-events: auto; border: 1.5px solid #000; color: #000; background: transparent; }
+        .stamp.s-normal, .stamp.s-slow, .stamp.s-ektazi, .stamp.s-bridge, .stamp.s-custom { background: transparent; color: #000; border-color: #000; }
         .stamp-src.dragging { opacity: 0.4; }
         #annotation-layer.drop-target { outline: 2px dashed var(--p); outline-offset: -2px; }
 
@@ -390,8 +388,8 @@
             <option value="">Damar...</option><option value="LMCA">LMCA</option><option value="LAD-P">LAD-P</option><option value="LAD-M">LAD-M</option><option value="LAD-D">LAD-D</option>
             <option value="Cx-P">Cx-P</option><option value="Cx-D">Cx-D</option><option value="RCA-P">RCA-P</option><option value="RCA-M">RCA-M</option><option value="RCA-D">RCA-D</option>
         </select>
-        <input type="text" id="e-val" style="width:100%; margin-bottom:5px; font-size:11px;" placeholder="Oran %">
-        <div style="display:flex; gap:2px;"><button onclick="apE('focal')">O</button><button onclick="apE('diffuse')">D</button><button onclick="delC()" style="color:red">X</button></div>
+        <input type="text" id="e-val" style="width:100%; margin-bottom:5px; font-size:13px; padding:4px;" placeholder="Oran %">
+        <div style="display:flex; gap:3px;"><button onclick="confirmE()" style="background:#16a34a;color:white;border-color:#16a34a;font-size:14px;flex:1.5;">✓</button><button onclick="apE('focal')" title="Odak">O</button><button onclick="apE('diffuse')" title="Diffüz">D</button><button onclick="delC()" style="color:red" title="Sil">✕</button></div>
     </div>
 
     <div id="context-menu">
@@ -734,12 +732,31 @@
             // hMid (beyaz/turuncu daire) at midpoint: bends object (changes mid only)
             const hMid = document.createElement('div');
             hMid.className = 'report-object-handle bend';
-            hMid.addEventListener('pointerdown', drag(hMid, (ev) => {
+            hMid.addEventListener('pointerdown', (e) => {
+                if (e.button !== 0) return;
+                e.stopPropagation(); e.preventDefault();
+                try { hMid.setPointerCapture(e.pointerId); } catch {}
                 const r = ann.getBoundingClientRect();
-                mid.x = (ev.clientX - r.left) / r.width * 100;
-                mid.y = (ev.clientY - r.top) / r.height * 100;
-                up();
-            }));
+                const sx = (e.clientX - r.left) / r.width * 100;
+                const sy = (e.clientY - r.top) / r.height * 100;
+                const smid = { x: mid.x, y: mid.y };
+                const SCALE = 0.25; // milimetric: 25% sensitivity
+                const move = (ev) => {
+                    const nx = (ev.clientX - r.left) / r.width * 100;
+                    const ny = (ev.clientY - r.top) / r.height * 100;
+                    mid.x = smid.x + (nx - sx) * SCALE;
+                    mid.y = smid.y + (ny - sy) * SCALE;
+                    up();
+                };
+                const upH = (ev) => {
+                    hMid.removeEventListener('pointermove', move);
+                    hMid.removeEventListener('pointerup', upH);
+                    try { hMid.releasePointerCapture(ev.pointerId); } catch {}
+                    rec();
+                };
+                hMid.addEventListener('pointermove', move);
+                hMid.addEventListener('pointerup', upH);
+            });
 
             // h2 (mavi tip) at p2: end point
             const h2 = document.createElement('div');
@@ -778,6 +795,12 @@
 
             ann.appendChild(c);
             up();
+            // Auto-attach editable text on right side of stent for mm value
+            if (type === 'stent' && midX === undefined) {
+                const tx = Math.min(98, Math.max(p1.x, p2.x) + 4);
+                const ty = (p1.y + p2.y) / 2;
+                crEditText(tx, ty, '', 'stent-text');
+            }
             setMode('select');
             rec();
             return c;
@@ -980,7 +1003,7 @@
         const crSL = (s,e,v) => {
             const lId='l-'+Math.random().toString(36).substr(2,5), p=document.createElement('div'); p.className='stenosis-point'; p.style.left=s.x+'%'; p.style.top=s.y+'%'; ann.appendChild(p);
             const l=document.createElement('div'); l.className='stenosis-label'; l.style.left=e.x+'%'; l.style.top=e.y+'%'; l.innerHTML='%'+v; l.dataset.lineId=lId; l.onclick=(ev)=>{ev.stopPropagation(); opE(l,ev.clientX,ev.clientY);}; l.oncontextmenu=(ev)=>opM(ev,l); mkD(l,()=>upL(l)); ann.appendChild(l);
-            const ln=document.createElementNS('http://www.w3.org/2000/svg','line'); ln.id=lId; ln.setAttribute('x1',s.x+'%'); ln.setAttribute('y1',s.y+'%'); ln.setAttribute('x2',e.x+'%'); ln.setAttribute('y2',e.y+'%'); ln.setAttribute('stroke','#e11d48'); ln.setAttribute('stroke-width','1.5'); svg.appendChild(ln); rec(); return l;
+            const ln=document.createElementNS('http://www.w3.org/2000/svg','line'); ln.id=lId; ln.setAttribute('x1',s.x+'%'); ln.setAttribute('y1',s.y+'%'); ln.setAttribute('x2',e.x+'%'); ln.setAttribute('y2',e.y+'%'); ln.setAttribute('stroke','#000'); ln.setAttribute('stroke-width','1.5'); svg.appendChild(ln); rec(); return l;
         };
         const crT = (x, y, val) => {
             const v = (val !== undefined) ? val : prompt('Not metni:', '');
@@ -995,9 +1018,23 @@
             setMode('select');
             rec(); return t;
         };
+        // Inline-editable text used by stent placement (right side of object)
+        const crEditText = (x, y, val, cls) => {
+            const t = document.createElement('div');
+            t.className = 'free-text ' + (cls || '');
+            t.contentEditable = true;
+            t.style.left = x + '%'; t.style.top = y + '%';
+            t.innerText = val || '';
+            t.dataset.placeholder = 'mm';
+            t.oncontextmenu = (e) => opM(e, t);
+            mkD(t); ann.appendChild(t);
+            setTimeout(() => { t.focus(); }, 10);
+            rec(); return t;
+        };
 
         const opE = (t,x,y) => { eT=t; ed.style.display='block'; ed.style.left=(x+10)+'px'; ed.style.top=(y+10)+'px'; const val=document.getElementById('e-val'); val.value=t.innerText.replace('%',''); document.getElementById('e-vessel').value=t.dataset.vessel||''; setTimeout(() => { val.focus(); val.select(); }, 0); };
         const apE = (s) => { if(!eT) return; eT.innerText='%'+document.getElementById('e-val').value; eT.dataset.vessel=document.getElementById('e-vessel').value; if(s==='diffuse') eT.classList.add('diffuse'); else eT.classList.remove('diffuse'); ed.style.display='none'; updateDiagnosis(); rec(); };
+        const confirmE = () => { if(!eT) return; const v=document.getElementById('e-val').value; eT.innerText = v ? ('%'+v) : ''; eT.dataset.vessel=document.getElementById('e-vessel').value; ed.style.display='none'; updateDiagnosis(); rec(); };
         const delC = () => { const t=eT||rT; if(!t) return; if(t.dataset.lineId) document.getElementById(t.dataset.lineId)?.remove(); t.remove(); ed.style.display='none'; ctx.style.display='none'; updateDiagnosis(); rec(); };
         const opM = (e,t) => { 
             e.preventDefault(); e.stopPropagation(); rT=t; 
