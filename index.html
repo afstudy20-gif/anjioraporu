@@ -158,7 +158,9 @@
         .stamp { position: absolute; padding: 2px 8px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: move; white-space: nowrap; transform: translate(-50%, -50%); z-index: 90; pointer-events: auto; border: 1.5px solid #000; color: #000; background: transparent; }
         .stamp.s-normal, .stamp.s-slow, .stamp.s-ektazi, .stamp.s-bridge, .stamp.s-custom { background: transparent; color: #000; border-color: #000; }
         .stamp-anchor { position: absolute; width: 8px; height: 8px; background: #000; border-radius: 50%; transform: translate(-50%, -50%); cursor: move; z-index: 95; pointer-events: auto; }
-        #svg-layer .stamp-line { pointer-events: none; }
+        #svg-layer .stamp-line, #svg-layer .stent-line { pointer-events: none; }
+        .free-text.stent-text { border: none !important; background: transparent !important; padding: 1px 4px; }
+        .free-text.stent-text[contenteditable="true"]:focus { outline: 1px dashed #999; }
         .stamp-src.dragging { opacity: 0.4; }
         #annotation-layer.drop-target { outline: 2px dashed var(--p); outline-offset: -2px; }
 
@@ -712,6 +714,7 @@
                 hTop.style.left = p1.x + '%'; hTop.style.top = p1.y + '%';
                 hMid.style.left = mid.x + '%'; hMid.style.top = mid.y + '%';
                 h2.style.left = p2.x + '%'; h2.style.top = p2.y + '%';
+                if (c._refreshAttachedText) c._refreshAttachedText();
             };
 
             const drag = (target, onMove) => (e) => {
@@ -828,11 +831,11 @@
 
             ann.appendChild(c);
             up();
-            // Auto-attach editable text on right side of stent for mm value
+            // Auto-attach borderless editable text on right side of stent for mm value
             if (type === 'stent' && midX === undefined) {
-                const tx = Math.min(98, Math.max(p1.x, p2.x) + 4);
+                const tx = Math.min(98, Math.max(p1.x, p2.x) + 6);
                 const ty = (p1.y + p2.y) / 2;
-                crEditText(tx, ty, '', 'stent-text');
+                crEditText(tx, ty, '', 'stent-text', c);
             }
             setMode('select');
             rec();
@@ -1067,16 +1070,43 @@
             rec(); return t;
         };
         // Inline-editable text used by stent placement (right side of object)
-        const crEditText = (x, y, val, cls) => {
+        // Double-click to edit, blur to lock. Borderless. Optional line to anchor object.
+        const crEditText = (x, y, val, cls, anchorObj) => {
+            const id = 'et-' + Math.random().toString(36).slice(2, 7);
+            const lineId = 'etl-' + id;
             const t = document.createElement('div');
             t.className = 'free-text ' + (cls || '');
-            t.contentEditable = true;
+            t.contentEditable = false;
             t.style.left = x + '%'; t.style.top = y + '%';
             t.innerText = val || '';
             t.dataset.placeholder = 'mm';
+            t.dataset.etid = id;
+            t.dataset.lineId = lineId;
             t.oncontextmenu = (e) => opM(e, t);
-            mkD(t); ann.appendChild(t);
-            setTimeout(() => { t.focus(); }, 10);
+            t.ondblclick = (e) => { e.stopPropagation(); t.contentEditable = true; setTimeout(() => t.focus(), 0); };
+            t.addEventListener('blur', () => { t.contentEditable = false; rec(); });
+            let ln = null;
+            const updateLine = () => {
+                if (!ln || !anchorObj) return;
+                ln.setAttribute('x1', anchorObj.p2.x + '%');
+                ln.setAttribute('y1', anchorObj.p2.y + '%');
+                ln.setAttribute('x2', t.style.left);
+                ln.setAttribute('y2', t.style.top);
+            };
+            if (anchorObj) {
+                ln = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                ln.setAttribute('id', lineId);
+                ln.setAttribute('stroke', '#000');
+                ln.setAttribute('stroke-width', '1');
+                ln.classList.add('stent-line');
+                svg.appendChild(ln);
+                anchorObj._refreshAttachedText = updateLine;
+            }
+            mkD(t, updateLine);
+            const origRemove = t.remove.bind(t);
+            t.remove = () => { origRemove(); if (ln) ln.remove(); };
+            ann.appendChild(t);
+            updateLine();
             rec(); return t;
         };
 
