@@ -157,6 +157,8 @@
 
         .stamp { position: absolute; padding: 2px 8px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: move; white-space: nowrap; transform: translate(-50%, -50%); z-index: 90; pointer-events: auto; border: 1.5px solid #000; color: #000; background: transparent; }
         .stamp.s-normal, .stamp.s-slow, .stamp.s-ektazi, .stamp.s-bridge, .stamp.s-custom { background: transparent; color: #000; border-color: #000; }
+        .stamp-anchor { position: absolute; width: 8px; height: 8px; background: #000; border-radius: 50%; transform: translate(-50%, -50%); cursor: move; z-index: 95; pointer-events: auto; }
+        #svg-layer .stamp-line { pointer-events: none; }
         .stamp-src.dragging { opacity: 0.4; }
         #annotation-layer.drop-target { outline: 2px dashed var(--p); outline-offset: -2px; }
 
@@ -558,15 +560,47 @@
             });
         };
         const setStamp = (label, cls) => { /* legacy click-to-place fallback */ curStamp = { label, cls }; mode = 'stamp'; };
-        const crStamp = (x, y, label, cls) => {
+        const crStamp = (x, y, label, cls, ax, ay) => {
+            const id = 'stm-' + Math.random().toString(36).slice(2, 7);
+            const lineId = 'sln-' + id;
+            const stampX = x, stampY = y;
+            const anchorX = (ax !== undefined) ? ax : (x + 6);
+            const anchorY = (ay !== undefined) ? ay : (y + 4);
             const s = document.createElement('div');
             s.className = 'stamp ' + (cls || 's-custom');
             s.dataset.cls = cls || 's-custom';
-            s.style.left = x + '%'; s.style.top = y + '%';
+            s.dataset.stid = id;
+            s.dataset.lineId = lineId;
+            s.style.left = stampX + '%'; s.style.top = stampY + '%';
             s.innerText = label;
+            const anchor = document.createElement('div');
+            anchor.className = 'stamp-anchor';
+            anchor.dataset.stid = id;
+            anchor.dataset.lineId = lineId;
+            anchor.style.left = anchorX + '%';
+            anchor.style.top = anchorY + '%';
+            const ln = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            ln.setAttribute('id', lineId);
+            ln.setAttribute('stroke', '#000');
+            ln.setAttribute('stroke-width', '1');
+            ln.setAttribute('stroke-dasharray', '3 3');
+            ln.classList.add('stamp-line');
+            const updateLine = () => {
+                ln.setAttribute('x1', s.style.left);
+                ln.setAttribute('y1', s.style.top);
+                ln.setAttribute('x2', anchor.style.left);
+                ln.setAttribute('y2', anchor.style.top);
+            };
             s.oncontextmenu = (e) => opM(e, s);
-            mkD(s);
+            anchor.oncontextmenu = (e) => opM(e, s);
+            mkD(s, updateLine);
+            mkD(anchor, updateLine);
+            const origRemove = s.remove.bind(s);
+            s.remove = () => { origRemove(); anchor.remove(); ln.remove(); };
             ann.appendChild(s);
+            ann.appendChild(anchor);
+            svg.appendChild(ln);
+            updateLine();
             rec();
             return s;
         };
@@ -1127,7 +1161,7 @@
         };
 
         const isDragModifier = (e) => e.altKey;
-        const NON_GATED = new Set(['stenosis-label','free-text','stamp']);
+        const NON_GATED = new Set(['stenosis-label','free-text','stamp','stamp-anchor']);
         const mkD = (el, mv) => {
             el.addEventListener('pointerdown', (e) => {
                 if (e.button !== 0) return;
@@ -1267,7 +1301,7 @@
             });
             data.markers = Array.from(document.querySelectorAll('.stenosis-label')).map(l=>({x:l.style.left,y:l.style.top,v:l.innerText,vs:l.dataset.vessel,df:l.classList.contains('diffuse'),ln:document.getElementById(l.dataset.lineId)?{x1:document.getElementById(l.dataset.lineId).getAttribute('x1'),y1:document.getElementById(l.dataset.lineId).getAttribute('y1')}:null}));
             data.txts = Array.from(document.querySelectorAll('.free-text')).map(t=>({x:t.style.left,y:t.style.top,v:t.innerText})) ;
-            data.stamps = Array.from(document.querySelectorAll('.stamp')).map(s=>({x:s.style.left,y:s.style.top,v:s.innerText,cls:s.dataset.cls||'s-custom'}));
+            data.stamps = Array.from(document.querySelectorAll('.stamp')).map(s=>{ const a = s.dataset.stid ? document.querySelector(`.stamp-anchor[data-stid="${s.dataset.stid}"]`) : null; return { x:s.style.left, y:s.style.top, v:s.innerText, cls:s.dataset.cls||'s-custom', ax: a?.style.left, ay: a?.style.top }; });
             data.objs = Array.from(document.querySelectorAll('.report-object')).map(o=>({t:o.dataset.type, p1:o.p1, p2:o.p2, mid:o.mid, w:o.dataset.w, op:o.style.opacity, vs:o.dataset.vessel}));
             data.slines = Array.from(document.querySelectorAll('.smart-line-path')).map(p => p.dataset.freehand
                 ? { freehand: true, pts: p.pts.map(pt => ({x: pt.x, y: pt.y})), sw: p.getAttribute('stroke-width') }
@@ -1295,12 +1329,12 @@
                     if (s[key] !== undefined) el.innerText = s[key];
                 });
             }
-            document.querySelectorAll('.stenosis-label,.stenosis-point,.free-text,.stamp,.report-object,.smart-line-handle').forEach(e=>e.remove());
-            document.querySelectorAll('.smart-line-path').forEach(e=>e.remove());
+            document.querySelectorAll('.stenosis-label,.stenosis-point,.free-text,.stamp,.stamp-anchor,.report-object,.smart-line-handle').forEach(e=>e.remove());
+            document.querySelectorAll('.smart-line-path,.stamp-line').forEach(e=>e.remove());
             svg.innerHTML=''; 
             (s.markers||[]).forEach(m=>{ const l = m.ln ? crSL({x:parseFloat(m.ln.x1),y:parseFloat(m.ln.y1)},{x:parseFloat(m.x),y:parseFloat(m.y)},m.v.replace('%','')) : crS(parseFloat(m.x),parseFloat(m.y),m.v.replace('%','')); if(l){ l.dataset.vessel=m.vs||''; if(m.df) l.classList.add('diffuse'); } }); 
             (s.txts||[]).forEach(t=>{ crT(parseFloat(t.x),parseFloat(t.y), t.v); });
-            (s.stamps||[]).forEach(st=>{ crStamp(parseFloat(st.x), parseFloat(st.y), st.v, st.cls); });
+            (s.stamps||[]).forEach(st=>{ crStamp(parseFloat(st.x), parseFloat(st.y), st.v, st.cls, st.ax !== undefined ? parseFloat(st.ax) : undefined, st.ay !== undefined ? parseFloat(st.ay) : undefined); });
             (s.objs||[]).forEach(o=>{
                 const p1 = o.p1 || {x: parseFloat(o.x), y: parseFloat(o.y)};
                 const p2 = o.p2 || {x: parseFloat(o.x), y: parseFloat(o.y) + 15};
