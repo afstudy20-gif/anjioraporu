@@ -7,11 +7,15 @@
         :root { --p: #2563eb; --s: #e11d48; --bg: #f8fafc; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background: var(--bg); display: flex; padding: 20px; gap: 20px; font-size: 13px; }
-        #toolbar {
-            width: 300px; background: white; padding: 15px; border-radius: 16px;
+        #toolbar, .tb {
+            width: 280px; background: white; padding: 15px; border-radius: 16px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 12px;
             height: calc(100vh - 40px); overflow-y: auto; position: sticky; top: 20px;
+            flex-shrink: 0;
         }
+        #toolbar { order: 1; }
+        #report-wrapper { order: 2; }
+        #toolbar-right { order: 3; }
         .tool-group { border-bottom: 1px solid #f1f5f9; padding-bottom: 10px; }
         label { display: block; font-size: 10px; font-weight: 800; color: #94a3b8; margin-bottom: 6px; text-transform: uppercase; }
         button {
@@ -218,7 +222,7 @@
             }
             #report-container * { visibility: visible; }
             #form-image { width: 100%; height: 100%; object-fit: contain; }
-            #toolbar, #floating-editor, #context-menu, .smart-line-handle, .report-object-handle, .btn-red, .add-group, #welcome-screen, .tool-sidebar, .list-container, label { display: none !important; }
+            #toolbar, #toolbar-right, .tb, #floating-editor, #context-menu, .smart-line-handle, .report-object-handle, .stamp-anchor, .btn-red, .add-group, #welcome-screen, .tool-sidebar, .list-container, label { display: none !important; }
             .selected { outline: none !important; }
             .field { border-bottom: none !important; }
         }
@@ -256,7 +260,7 @@
         </div>
     </div>
 
-    <div id="toolbar" style="display: none">
+    <div id="toolbar" class="tb" style="display: none">
         <div class="tool-group">
             <label>Araçlar</label>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
@@ -275,10 +279,30 @@
             </div>
             <label style="margin-top:10px;">Damgalar (sürükle bırak)</label>
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px;">
-                <div class="stamp-src" draggable="true" data-label="Normal" data-cls="s-normal" style="background:#d1fae5;color:#065f46;border:1.5px solid #10b981;font-size:11px;font-weight:700;padding:6px;border-radius:6px;text-align:center;cursor:grab;user-select:none;">Normal</div>
-                <div class="stamp-src" draggable="true" data-label="Yavaş akım" data-cls="s-slow" style="background:#fef3c7;color:#92400e;border:1.5px solid #f59e0b;font-size:11px;font-weight:700;padding:6px;border-radius:6px;text-align:center;cursor:grab;user-select:none;">Yavaş akım</div>
-                <div class="stamp-src" draggable="true" data-label="Ektazi" data-cls="s-ektazi" style="background:#ede9fe;color:#5b21b6;border:1.5px solid #8b5cf6;font-size:11px;font-weight:700;padding:6px;border-radius:6px;text-align:center;cursor:grab;user-select:none;">Ektazi</div>
-                <div class="stamp-src" draggable="true" data-label="Muskuler bridge" data-cls="s-bridge" style="background:#dbeafe;color:#1e40af;border:1.5px solid #3b82f6;font-size:11px;font-weight:700;padding:6px;border-radius:6px;text-align:center;cursor:grab;user-select:none;">Muskuler bridge</div>
+                <div class="stamp-src" draggable="true" data-label="Normal" data-cls="s-normal" style="background:transparent;color:#000;border:1.5px solid #000;font-size:11px;font-weight:700;padding:6px;border-radius:6px;text-align:center;cursor:grab;user-select:none;">Normal</div>
+                <div class="stamp-src" draggable="true" data-label="Plak" data-cls="s-custom" style="background:transparent;color:#000;border:1.5px solid #000;font-size:11px;font-weight:700;padding:6px;border-radius:6px;text-align:center;cursor:grab;user-select:none;">Plak</div>
+                <div class="stamp-src" draggable="true" data-label="Yavaş akım" data-cls="s-slow" style="background:transparent;color:#000;border:1.5px solid #000;font-size:11px;font-weight:700;padding:6px;border-radius:6px;text-align:center;cursor:grab;user-select:none;">Yavaş akım</div>
+                <div class="stamp-src" draggable="true" data-label="Ektazi" data-cls="s-ektazi" style="background:transparent;color:#000;border:1.5px solid #000;font-size:11px;font-weight:700;padding:6px;border-radius:6px;text-align:center;cursor:grab;user-select:none;">Ektazi</div>
+                <div class="stamp-src" draggable="true" data-label="Muskuler bridge" data-cls="s-bridge" style="background:transparent;color:#000;border:1.5px solid #000;font-size:11px;font-weight:700;padding:6px;border-radius:6px;text-align:center;cursor:grab;user-select:none;">Muskuler bridge</div>
+            </div>
+            <label style="margin-top:8px;">Darlık %</label>
+            <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:3px;">
+                <div class="stamp-src" draggable="true" data-label="%20" data-cls="s-custom" style="background:transparent;color:#000;border:1.5px solid #000;font-size:11px;font-weight:700;padding:5px;border-radius:6px;text-align:center;cursor:grab;user-select:none;">%20</div>
+                <div class="stamp-src" draggable="true" data-label="%30" data-cls="s-custom" style="background:transparent;color:#000;border:1.5px solid #000;font-size:11px;font-weight:700;padding:5px;border-radius:6px;text-align:center;cursor:grab;user-select:none;">%30</div>
+                <div class="stamp-src" draggable="true" data-label="%40" data-cls="s-custom" style="background:transparent;color:#000;border:1.5px solid #000;font-size:11px;font-weight:700;padding:5px;border-radius:6px;text-align:center;cursor:grab;user-select:none;">%40</div>
+                <div class="stamp-src" draggable="true" data-label="%50" data-cls="s-custom" style="background:transparent;color:#000;border:1.5px solid #000;font-size:11px;font-weight:700;padding:5px;border-radius:6px;text-align:center;cursor:grab;user-select:none;">%50</div>
+                <div class="stamp-src" draggable="true" data-label="%60" data-cls="s-custom" style="background:transparent;color:#000;border:1.5px solid #000;font-size:11px;font-weight:700;padding:5px;border-radius:6px;text-align:center;cursor:grab;user-select:none;">%60</div>
+                <div class="stamp-src" draggable="true" data-label="%80" data-cls="s-custom" style="background:transparent;color:#000;border:1.5px solid #000;font-size:11px;font-weight:700;padding:5px;border-radius:6px;text-align:center;cursor:grab;user-select:none;">%80</div>
+                <div class="stamp-src" draggable="true" data-label="%90" data-cls="s-custom" style="background:transparent;color:#000;border:1.5px solid #000;font-size:11px;font-weight:700;padding:5px;border-radius:6px;text-align:center;cursor:grab;user-select:none;">%90</div>
+                <div class="stamp-src" draggable="true" data-label="%95" data-cls="s-custom" style="background:transparent;color:#000;border:1.5px solid #000;font-size:11px;font-weight:700;padding:5px;border-radius:6px;text-align:center;cursor:grab;user-select:none;">%95</div>
+                <div class="stamp-src" draggable="true" data-label="%99" data-cls="s-custom" style="background:transparent;color:#000;border:1.5px solid #000;font-size:11px;font-weight:700;padding:5px;border-radius:6px;text-align:center;cursor:grab;user-select:none;">%99</div>
+                <div class="stamp-src" draggable="true" data-label="%100" data-cls="s-custom" style="background:transparent;color:#000;border:1.5px solid #000;font-size:11px;font-weight:700;padding:5px;border-radius:6px;text-align:center;cursor:grab;user-select:none;grid-column:span 3;">%100</div>
+            </div>
+            <label style="margin-top:8px;">Distal dolum</label>
+            <div style="display:grid; gap:3px;">
+                <div class="stamp-src" draggable="true" data-label="Distali retrograd doluyor" data-cls="s-custom" style="background:transparent;color:#000;border:1.5px solid #000;font-size:11px;font-weight:700;padding:5px;border-radius:6px;text-align:center;cursor:grab;user-select:none;">Distali retrograd doluyor</div>
+                <div class="stamp-src" draggable="true" data-label="Distali ipsilateral doluyor" data-cls="s-custom" style="background:transparent;color:#000;border:1.5px solid #000;font-size:11px;font-weight:700;padding:5px;border-radius:6px;text-align:center;cursor:grab;user-select:none;">Distali ipsilateral doluyor</div>
+                <div class="stamp-src" draggable="true" data-label="Distali kollaterallerle doluyor" data-cls="s-custom" style="background:transparent;color:#000;border:1.5px solid #000;font-size:11px;font-weight:700;padding:5px;border-radius:6px;text-align:center;cursor:grab;user-select:none;">Distali kollaterallerle doluyor</div>
             </div>
             <div class="add-group" style="margin-top:4px;"><input type="text" id="in-stamp" placeholder="Özel damga..."><button onclick="addCustomStampSource()">+</button></div>
             <div id="custom-stamp-list" style="display:grid; grid-template-columns:1fr 1fr; gap:4px; margin-top:4px;"></div>
@@ -292,7 +316,9 @@
                 <button onclick="resetZoom()" title="Reset">🔄</button>
             </div>
         </div>
+    </div>
 
+    <div id="toolbar-right" class="tb" style="display: none">
         <div class="tool-group" style="background: #fff1f2; padding: 10px; border-radius: 8px;">
             <label style="color: #e11d48;">Tam Rapor Şablonları</label>
             <div id="list-full_report" class="list-container"></div>
@@ -474,8 +500,9 @@
 
             // Show toolbar
             if (img.src.includes('sablon')) {
-                document.getElementById('welcome-screen').style.display='none'; 
+                document.getElementById('welcome-screen').style.display='none';
                 document.getElementById('toolbar').style.display='flex';
+                document.getElementById('toolbar-right').style.display='flex';
                 rec();
             }
         };
@@ -496,6 +523,8 @@
                 if(wrapper) wrapper.style.display='block'; 
                 const tb = document.getElementById('toolbar');
                 if(tb) tb.style.display='flex';
+                const tbr = document.getElementById('toolbar-right');
+                if(tbr) tbr.style.display='flex';
                 rec();
             }; r.readAsDataURL(f);
         };
