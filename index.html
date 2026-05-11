@@ -1463,7 +1463,7 @@
             const isPkg = (img.src || '').includes('pkg_sablon');
             const prefix = isPkg ? 'PKG Raporu' : 'Anjiyo';
             const oT = document.title;
-            document.title = `${prefix}_${n}_${d}`;
+            document.title = `${n}_${prefix}_${d}`;
             window.print();
             setTimeout(() => document.title = oT, 1000);
         };
