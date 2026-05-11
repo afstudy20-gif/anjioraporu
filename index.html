@@ -620,25 +620,43 @@
             ln.setAttribute('stroke-dasharray', '3 3');
             ln.classList.add('stamp-line');
             const updateLine = () => {
-                ln.setAttribute('x1', s.style.left);
-                ln.setAttribute('y1', s.style.top);
-                ln.setAttribute('x2', anchor.style.left);
-                ln.setAttribute('y2', anchor.style.top);
+                const annR = ann.getBoundingClientRect();
+                const sr = s.getBoundingClientRect();
+                const sxPct = parseFloat(s.style.left);
+                const syPct = parseFloat(s.style.top);
+                const axPct = parseFloat(anchor.style.left);
+                const ayPct = parseFloat(anchor.style.top);
+                const halfWp = (sr.width / 2) / annR.width * 100;
+                const halfHp = (sr.height / 2) / annR.height * 100;
+                const dx = axPct - sxPct, dy = ayPct - syPct;
+                let x1 = sxPct, y1 = syPct;
+                if (dx !== 0 || dy !== 0) {
+                    const tX = dx !== 0 ? halfWp / Math.abs(dx) : Infinity;
+                    const tY = dy !== 0 ? halfHp / Math.abs(dy) : Infinity;
+                    const t = Math.min(tX, tY, 1);
+                    x1 = sxPct + dx * t;
+                    y1 = syPct + dy * t;
+                }
+                ln.setAttribute('x1', x1 + '%');
+                ln.setAttribute('y1', y1 + '%');
+                ln.setAttribute('x2', axPct + '%');
+                ln.setAttribute('y2', ayPct + '%');
             };
+            const updateLineRAF = () => requestAnimationFrame(updateLine);
             s.oncontextmenu = (e) => opM(e, s);
             anchor.oncontextmenu = (e) => opM(e, s);
-            mkD(s, updateLine);
-            mkD(anchor, updateLine);
+            mkD(s, updateLineRAF);
+            mkD(anchor, updateLineRAF);
             const origRemove = s.remove.bind(s);
             s.remove = () => { origRemove(); anchor.remove(); ln.remove(); };
             ann.appendChild(s);
             ann.appendChild(anchor);
             svg.appendChild(ln);
-            updateLine();
+            requestAnimationFrame(updateLine);
             rec();
             return s;
         };
-        
+
         ann.onclick = (e) => {
             if(e.target !== ann) return;
             document.querySelectorAll('.selected').forEach(el=>el.classList.remove('selected'));
@@ -1147,10 +1165,27 @@
             let ln = null;
             const updateLine = () => {
                 if (!ln || !anchorObj) return;
-                ln.setAttribute('x1', anchorObj.p2.x + '%');
-                ln.setAttribute('y1', anchorObj.p2.y + '%');
-                ln.setAttribute('x2', t.style.left);
-                ln.setAttribute('y2', t.style.top);
+                const annR = ann.getBoundingClientRect();
+                const tr = t.getBoundingClientRect();
+                const sxPct = anchorObj.mid.x;
+                const syPct = anchorObj.mid.y;
+                const txPct = parseFloat(t.style.left);
+                const tyPct = parseFloat(t.style.top);
+                const halfWp = (tr.width / 2) / annR.width * 100;
+                const halfHp = (tr.height / 2) / annR.height * 100;
+                const dx = sxPct - txPct, dy = syPct - tyPct;
+                let x2 = txPct, y2 = tyPct;
+                if (dx !== 0 || dy !== 0) {
+                    const tX = dx !== 0 ? halfWp / Math.abs(dx) : Infinity;
+                    const tY = dy !== 0 ? halfHp / Math.abs(dy) : Infinity;
+                    const t2 = Math.min(tX, tY, 1);
+                    x2 = txPct + dx * t2;
+                    y2 = tyPct + dy * t2;
+                }
+                ln.setAttribute('x1', sxPct + '%');
+                ln.setAttribute('y1', syPct + '%');
+                ln.setAttribute('x2', x2 + '%');
+                ln.setAttribute('y2', y2 + '%');
             };
             if (anchorObj) {
                 ln = document.createElementNS('http://www.w3.org/2000/svg', 'line');
@@ -1159,13 +1194,13 @@
                 ln.setAttribute('stroke-width', '1');
                 ln.classList.add('stent-line');
                 svg.appendChild(ln);
-                anchorObj._refreshAttachedText = updateLine;
+                anchorObj._refreshAttachedText = () => requestAnimationFrame(updateLine);
             }
-            mkD(t, updateLine);
+            mkD(t, () => requestAnimationFrame(updateLine));
             const origRemove = t.remove.bind(t);
             t.remove = () => { origRemove(); if (ln) ln.remove(); };
             ann.appendChild(t);
-            updateLine();
+            requestAnimationFrame(updateLine);
             rec(); return t;
         };
 
