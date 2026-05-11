@@ -69,7 +69,9 @@
         .diffuse { padding: 2px 6px; border-radius: 10px; border: 1.5px dashed #000; }
         .free-text { position: absolute; color: #000; font-weight: 700; cursor: move; white-space: nowrap; min-width: 60px; min-height: 18px; background: transparent; border-radius: 0; padding: 2px 4px; border: none; z-index: 110; pointer-events: auto; font-size: 13px; }
         .free-text[contenteditable="true"]:focus { outline: 1px dashed #999; cursor: text; }
-        .free-text[contenteditable="true"]:empty::before { content: attr(data-placeholder); color: #999; font-style: italic; font-weight: 400; }
+        .free-text:empty::before { content: attr(data-placeholder); color: #888; font-style: italic; font-weight: 400; }
+        .free-text.stent-text { outline: 1px dotted #bbb; }
+        .free-text.stent-text[contenteditable="true"]:focus { outline: 1px dashed #666; }
         #doctor-box { position: absolute; bottom: 8%; right: 10%; width: 180px; font-weight: 600; cursor: move; z-index: 120; pointer-events: auto; }
         select.field { -webkit-appearance: none; -moz-appearance: none; appearance: none; background: transparent; border: none; padding: 0; cursor: pointer; color: inherit; font-family: inherit; font-size: inherit; }
         select.field:focus { outline: none; background: #eff6ff; }
@@ -1455,7 +1457,16 @@
         const redo = () => { if(!rS.length) return; const s=rS.pop(); uS.push(s); apply(s); };
         const apply = (s) => { const d=JSON.parse(s); loadF(d); };
 
-        const doPrint = () => { const n=document.getElementById('f-name').innerText||'Hasta', d=document.getElementById('f-date').innerText, oT=document.title; document.title=n+'.'+d; window.print(); setTimeout(()=>document.title=oT,1000); };
+        const doPrint = () => {
+            const n = document.getElementById('f-name').innerText || 'Hasta';
+            const d = document.getElementById('f-date').innerText;
+            const isPkg = (img.src || '').includes('pkg_sablon');
+            const prefix = isPkg ? 'PKG Raporu' : 'Anjiyo';
+            const oT = document.title;
+            document.title = `${prefix}_${n}_${d}`;
+            window.print();
+            setTimeout(() => document.title = oT, 1000);
+        };
         const expJSON = () => { const b=new Blob([JSON.stringify({t:getT('tani'),k:getT('konsey'),d:getT('doktor'),f:getT('full_report')})],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='yedek.json'; a.click(); };
         const impJSON = (i) => { const f=i.files[0]; if(!f) return; const r=new FileReader(); r.onload=(e)=>{ try{ const d=JSON.parse(e.target.result); saveT('tani',d.t||[]); saveT('konsey',d.k||[]); saveT('doktor',d.d||[]); saveT('full_report',d.f||[]); location.reload(); } catch(err){ alert('Geçersiz yedek dosyası: '+err.message); } }; r.readAsText(f); };
         const expCSV = () => { let c="Hasta,Tarih,Damar,Oran,Tani,Konsey\n"; document.querySelectorAll('.stenosis-label').forEach(m=>c+=`"${document.getElementById('f-name').innerText}","${document.getElementById('f-date').innerText}","${m.dataset.vessel||''}","${m.innerText.replace('%','')}", "${document.getElementById('f-tani').innerText}","${document.getElementById('f-konsey').innerText}"\n`); const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(["\uFEFF"+c],{type:'text/csv'})); a.download='rapor.csv'; a.click(); };
