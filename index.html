@@ -272,6 +272,7 @@
                 <button id="mode-text" onclick="setMode('text')">✍️ Not</button>
                 <button id="mode-stent" onclick="setMode('stent')">🕸️ Stent</button>
                 <button id="mode-sline" onclick="setMode('sline')">➰ Akıllı Çizgi</button>
+                <button id="mode-arrow" onclick="setMode('arrow')">↗ Ok</button>
                 <button id="mode-fline" onclick="setMode('fline')">✏️ Serbest Çizgi</button>
                 <button id="mode-lima" onclick="setMode('lima')">🤱 LIMA</button>
                 <button id="mode-safen" onclick="setMode('safen')">🦵 Safen</button>
@@ -362,7 +363,13 @@
     <div id="report-wrapper">
         <div id="report-container">
             <img id="form-image">
-            <svg id="svg-layer"></svg>
+            <svg id="svg-layer">
+            <defs>
+                <marker id="arrowhead" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                    <path d="M0,0 L10,5 L0,10 z" fill="#000"/>
+                </marker>
+            </defs>
+        </svg>
             <div id="annotation-layer">
                 <!-- Row 1 -->
                 <div contenteditable="true" id="f-name" class="field draggable" style="top: 8.7%; left: 24%; width: 22%;"></div>
@@ -691,6 +698,7 @@
                 }
             }
             else if(mode==='sline') { if(!lineStart) { lineStart={x,y}; const p=document.createElement('div'); p.className='stenosis-point pending'; p.style.left=x+'%'; p.style.top=y+'%'; ann.appendChild(p); } else { document.querySelectorAll('.stenosis-point.pending').forEach(p=>p.remove()); crSmartLine(lineStart.x, lineStart.y, x, y); lineStart=null; } }
+            else if(mode==='arrow') { if(!lineStart) { lineStart={x,y}; const p=document.createElement('div'); p.className='stenosis-point pending'; p.style.left=x+'%'; p.style.top=y+'%'; ann.appendChild(p); } else { document.querySelectorAll('.stenosis-point.pending').forEach(p=>p.remove()); crSmartLine(lineStart.x, lineStart.y, x, y, true); lineStart=null; } }
             else if(mode==='text') crT(x,y);
             else if(mode==='stamp' && curStamp) { crStamp(x, y, curStamp.label, curStamp.cls); setMode('select'); }
             else if(['stent','lima','safen','damar'].includes(mode)) crObj(mode,x,y);
@@ -892,10 +900,11 @@
             return c;
         };
 
-        const crSmartLine = (x1, y1, x2, y2) => {
+        const crSmartLine = (x1, y1, x2, y2, isArrow) => {
             const g = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             g.className.baseVal = 'smart-line-path';
-            const id = 'sl-' + Date.now();
+            if (isArrow) { g.setAttribute('marker-end', 'url(#arrowhead)'); g.dataset.arrow = '1'; }
+            const id = (isArrow ? 'ar-' : 'sl-') + Date.now();
             g.id = id;
             const hit = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             hit.className.baseVal = 'smart-line-hit';
@@ -1239,7 +1248,7 @@
         const dup = () => {
             if(!rT) return;
             if(rT.isSLine) {
-                const n = crSmartLine(rT.p1.x + 2, rT.p1.y + 2, rT.p2.x + 2, rT.p2.y + 2);
+                const n = crSmartLine(rT.p1.x + 2, rT.p1.y + 2, rT.p2.x + 2, rT.p2.y + 2, rT.el && rT.el.dataset.arrow === '1');
                 n.cp.x = rT.cp.x + 2; n.cp.y = rT.cp.y + 2;
                 n.g.setAttribute('stroke-width', rT.el.getAttribute('stroke-width'));
                 n.refresh();
@@ -1429,8 +1438,8 @@
             data.stamps = Array.from(document.querySelectorAll('.stamp')).map(s=>{ const a = s.dataset.stid ? document.querySelector(`.stamp-anchor[data-stid="${s.dataset.stid}"]`) : null; return { x:s.style.left, y:s.style.top, v:s.innerText, cls:s.dataset.cls||'s-custom', ax: a?.style.left, ay: a?.style.top }; });
             data.objs = Array.from(document.querySelectorAll('.report-object')).map(o=>({t:o.dataset.type, p1:o.p1, p2:o.p2, mid:o.mid, w:o.dataset.w, op:o.style.opacity, vs:o.dataset.vessel}));
             data.slines = Array.from(document.querySelectorAll('.smart-line-path')).map(p => p.dataset.freehand
-                ? { freehand: true, pts: p.pts.map(pt => ({x: pt.x, y: pt.y})), sw: p.getAttribute('stroke-width') }
-                : { p1: p.p1, p2: p.p2, cp: p.cp, sw: p.getAttribute('stroke-width') });
+                ? { freehand: true, pts: p.pts.map(pt => ({x: pt.x, y: pt.y})), sw: p.getAttribute('stroke-width'), arrow: p.dataset.arrow === '1' }
+                : { p1: p.p1, p2: p.p2, cp: p.cp, sw: p.getAttribute('stroke-width'), arrow: p.dataset.arrow === '1' });
             return data;
         };
         const saveFull = () => { const n=document.getElementById('in-full_report').value; if(!n) return; const l=getT('full_report'); l.push({name:n, state:cap()}); saveT('full_report',l); };
@@ -1478,7 +1487,7 @@
                 if (sl.freehand && sl.pts && sl.pts.length >= 2) {
                     crFreeLine(sl.pts.map(p=>({x:p.x,y:p.y})), sl.sw || '3');
                 } else if (sl.p1 && sl.p2) {
-                    const l = crSmartLine(sl.p1.x, sl.p1.y, sl.p2.x, sl.p2.y);
+                    const l = crSmartLine(sl.p1.x, sl.p1.y, sl.p2.x, sl.p2.y, !!sl.arrow);
                     if(sl.cp) { l.cp.x = sl.cp.x; l.cp.y = sl.cp.y; }
                     if(sl.sw) l.g.setAttribute('stroke-width', sl.sw);
                     l.refresh();
