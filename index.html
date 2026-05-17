@@ -417,7 +417,7 @@
             <!-- Bottom Fields -->
             <div contenteditable="true" id="f-dominant" class="field draggable" style="top: 84.8%; left: 18%; width: 20%;"></div>
             <div contenteditable="true" id="f-tani" class="field draggable" style="top: 87.0%; left: 12%; width: 82%;"></div>
-            <div contenteditable="true" id="f-konsey" class="field draggable" style="top: 90.6%; left: 21%; width: 73%;"></div>
+            <div contenteditable="true" id="f-konsey" class="field draggable" style="top: 90.6%; left: 17%; width: 77%;"></div>
             <div id="doctor-box"></div>
             
             <!-- PCI Report Text Area -->
@@ -1308,10 +1308,10 @@
         const mkD = (el, mv) => {
             el.addEventListener('pointerdown', (e) => {
                 if (e.button !== 0) return;
-                const tag = el.tagName;
-                const editable = el.hasAttribute('contentEditable') || tag === 'SELECT' || tag === 'INPUT' || tag === 'TEXTAREA';
-                const free = !editable || [...el.classList].some(c => NON_GATED.has(c)) || el.id === 'doctor-box';
-                if (!free && !isDragModifier(e)) return;
+                // If field currently in edit mode, allow text interaction; require Alt to drag
+                if (el.contentEditable === 'true' || el.getAttribute('contenteditable') === 'true') {
+                    if (!isDragModifier(e)) return;
+                }
                 e.preventDefault();
                 e.stopPropagation();
                 if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
@@ -1349,6 +1349,21 @@
         };
         document.querySelectorAll('.field.draggable, .checkbox.draggable').forEach(f => mkD(f));
         mkD(document.getElementById('doctor-box'));
+        // All editable fields: drag by default, dblclick to enter edit mode
+        const wireDblClickEdit = (el) => {
+            if (!el) return;
+            if (el.tagName === 'SELECT' || el.tagName === 'INPUT') return;
+            if (el.getAttribute('contenteditable') !== 'true') return;
+            el.setAttribute('contenteditable', 'false');
+            el.addEventListener('dblclick', (e) => {
+                e.stopPropagation();
+                el.setAttribute('contenteditable', 'true');
+                setTimeout(() => { el.focus(); }, 0);
+            });
+            el.addEventListener('blur', () => { el.setAttribute('contenteditable', 'false'); rec(); });
+        };
+        document.querySelectorAll('.field.draggable').forEach(wireDblClickEdit);
+        wireDblClickEdit(document.querySelector('.pci-report-area'));
         // Stamp drag-drop wiring (renderCustomStamps deferred until esc is defined)
         wireStampSources();
         ann.addEventListener('dragover', (e) => {
